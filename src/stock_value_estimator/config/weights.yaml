@@ -1,0 +1,59 @@
+# 六维权重（外层）+ 各维度内部权重（内层，会自动归一化）
+
+dimensions:
+  profit: 0.25
+  cashflow: 0.20
+  growth: 0.15
+  solvency: 0.15
+  operation: 0.15
+  asset: 0.10
+
+# 盈利能力
+profit:
+  roe: 0.40
+  net_margin: 0.30
+  gross_margin: 0.20
+  roic: 0.10
+
+# 现金流质量
+cashflow:
+  nco: 0.40           # 5 年累计现金含量
+  cash_sales: 0.30    # 收现比
+  fcf_margin: 0.20
+  stability: 0.10     # 经营现金流为负年数
+
+# 成长能力
+growth:
+  rev_cagr: 0.25
+  np_cagr: 0.25
+  rev_yoy_now: 0.15
+  np_yoy_now: 0.10
+  cash_quality: 0.05  # 5 年累计现金含量（利润含金量）
+  deduct_ratio: 0.10  # 扣非/归母
+  consistency: 0.10   # 趋势一致性（§2.2.9 状态机）
+
+# 偿债能力（金融业跳过流动性指标）
+solvency:
+  current_ratio: 0.20
+  quick_ratio: 0.25
+  cash_ratio: 0.25
+  interest_cover: 0.30
+
+# 营运能力（全部同业分位）
+operation:
+  asset_turnover: 0.25
+  inv_days: 0.20
+  ar_days: 0.25
+  ap_days: 0.15
+  ccc: 0.15
+
+# 资产质量（资本型走银行口径，其余走通用口径）
+asset_general:
+  debt_ratio: 0.30
+  int_debt_ratio: 0.25
+  goodwill_ratio: 0.25
+
+asset_bank:
+  npl: 0.45           # 不良率
+  provision: 0.35     # 拨备覆盖率
+  car: 0.20           # 资本充足率

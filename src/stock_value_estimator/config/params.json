@@ -1,0 +1,188 @@
+{
+  "version": "2.8",
+  "erp": {
+    "产品型": 0.06,
+    "运营型": 0.08,
+    "项目型": 0.085,
+    "资本型": 0.085
+  },
+  "erp_growth_extra": 0.015,
+  "g_cap": 0.05,
+  "g_growth_ratio": 0.5,
+  "g_mature": 0.025,
+  "g_mature_saturated": -0.005,
+  "g_decline": -0.01,
+  "g_soft_ratio": 0.5,
+  "g_r_spread": 0.02,
+  "grade": {
+    "A": 80,
+    "B": 70,
+    "C": 50
+  },
+  "mos": {
+    "A": 0.15,
+    "B": 0.2,
+    "C": 0.25,
+    "D": 0.3
+  },
+  "fair_band": [
+    0.9,
+    1.1
+  ],
+  "soft_clamp_k": 0.33,
+  "noise_band": 0.05,
+  "trend": {
+    "long_min": 0.03,
+    "short_max": -0.05,
+    "decel_ratio": 0.4,
+    "decel_gap": 0.1,
+    "lag_yoy": -0.3,
+    "rebound_yoy": 0.02,
+    "cyclic_gm_std": 0.08
+  },
+  "crash": {
+    "min_times": 2,
+    "drop": -0.4,
+    "lookback": 8,
+    "cyclic_exempt_gm_std": 0.08
+  },
+  "cash_quality_min": 0.8,
+  "cash_quality_soft": 0.7,
+  "ocf_yoy_bad": -0.2,
+  "profit_rebound": 0.1,
+  "unlock": {
+    "future_days": 365,
+    "recent_days": 60,
+    "ratio_soft": 0.05,
+    "ratio_high": 0.1
+  },
+  "pledge": {
+    "total_soft": 1.0,
+    "controller_hard": 1.0,
+    "holder_ratio_hard": 20.0,
+    "tolerance": 0.5
+  },
+  "revenue_profit": {
+    "rev_min": 0.05,
+    "np_ratio": 0.3,
+    "gap_min": 0.05
+  },
+  "quarterly": {
+    "q1_share_high": 0.4,
+    "q4_share_low": 0.1,
+    "min_years": 2
+  },
+  "receivable_inventory": {
+    "gap": 0.2,
+    "min_abs_yi": 1.0,
+    "min_rev_ratio": 0.05
+  },
+  "mktcap": {
+    "small_yi": 50
+  },
+  "bank": {
+    "npl_base": 1.0,
+    "npl_penalty_per_pp": 0.15,
+    "prov_base": 250,
+    "prov_penalty_per_100pp": 0.07,
+    "max_penalty": 0.25
+  },
+  "risk": {
+    "high_risk_soft": 3
+  },
+  "scenario": {
+    "span": 0.3
+  },
+  "position": {
+    "single_max": 0.2,
+    "industry_max": 0.4,
+    "c_grade_max": 0.05
+  },
+  "http": {
+    "timeout": 15,
+    "retries": 2,
+    "throttle": 0.3
+  },
+  "ev_ebitda": {
+    "trigger": {
+      "pe_high": 80,
+      "eps_low": 0.1,
+      "dep_rev": 0.15,
+      "fixed_asset": 0.4
+    },
+    "bands": {
+      "default": [
+        8.0,
+        15.0
+      ],
+      "C39": [
+        12.0,
+        20.0
+      ],
+      "C35": [
+        8.0,
+        14.0
+      ],
+      "C36": [
+        8.0,
+        14.0
+      ],
+      "C37": [
+        8.0,
+        14.0
+      ],
+      "C38": [
+        9.0,
+        16.0
+      ],
+      "C22": [
+        6.0,
+        10.0
+      ],
+      "C25": [
+        6.0,
+        10.0
+      ],
+      "C28": [
+        8.0,
+        13.0
+      ],
+      "C29": [
+        7.0,
+        12.0
+      ],
+      "C30": [
+        7.0,
+        12.0
+      ],
+      "C31": [
+        5.0,
+        9.0
+      ],
+      "C32": [
+        7.0,
+        12.0
+      ],
+      "G53": [
+        8.0,
+        13.0
+      ],
+      "G54": [
+        7.0,
+        11.0
+      ],
+      "G55": [
+        6.0,
+        10.0
+      ],
+      "G56": [
+        8.0,
+        12.0
+      ],
+      "D44": [
+        7.0,
+        12.0
+      ]
+    }
+  }
+}

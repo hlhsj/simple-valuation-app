@@ -1,0 +1,103 @@
+name: Release
+
+# 推送 v* 标签时：校验 → 建 Release → 在 Windows 上打包并上传 exe
+# 也可手动运行（Actions → Release → Run workflow），用于补建或修正发行说明
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要创建或更新的标签，例如 v0.1.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  release:
+    name: 创建 Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 语法检查
+        run: python -m compileall -q app.py src
+
+      - name: 冒烟测试
+        run: |
+          python app.py --port 8899 --no-browser &
+          APP_PID=$!
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8899/api/health >/dev/null 2>&1; then
+              echo "health ok"
+              break
+            fi
+            sleep 0.5
+          done
+          curl -fsS http://127.0.0.1:8899/ >/dev/null
+          kill $APP_PID
+
+      - name: 从 CHANGELOG 抽取本版说明
+        run: |
+          python - <<'PY'
+          import os, re, pathlib
+          tag = os.environ["TAG"]
+          text = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+          pattern = rf"^##\s+{re.escape(tag)}\b[^\n]*\n(.*?)(?=^##\s|\Z)"
+          m = re.search(pattern, text, re.M | re.S)
+          body = (m.group(1).strip() if m else "")
+          if not body:
+              body = f"本版说明见 CHANGELOG.md 中的 {tag} 条目。"
+          pathlib.Path("RELEASE_NOTES.md").write_text(body + "\n", encoding="utf-8")
+          PY
+
+      - name: 创建或更新 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file RELEASE_NOTES.md
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file RELEASE_NOTES.md \
+              --verify-tag
+          fi
+
+  build-exe:
+    name: 打包 Windows exe
+    needs: release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安装 PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: 打包
+        run: pyinstaller --noconfirm --clean build.spec
+
+      - name: 上传 exe 到 Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $asset = "dist/SimpleValuationApp-$env:TAG-win64.exe"
+          Copy-Item "dist/估值助手.exe" $asset
+          gh release upload $env:TAG $asset --clobber

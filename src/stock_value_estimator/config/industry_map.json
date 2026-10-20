@@ -1,0 +1,83 @@
+{
+  "mode_rules": [
+    {
+      "mode": "资本型",
+      "prefixes": [
+        "J66",
+        "J67",
+        "J68",
+        "J69"
+      ],
+      "zero_pe": [
+        3,
+        6
+      ]
+    },
+    {
+      "mode": "项目型",
+      "prefixes": [
+        "B",
+        "D",
+        "E",
+        "K",
+        "G5",
+        "G6",
+        "C25",
+        "C26",
+        "C30",
+        "C31",
+        "C32",
+        "C33",
+        "C22"
+      ],
+      "zero_pe": [
+        6,
+        10
+      ]
+    },
+    {
+      "mode": "运营型",
+      "prefixes": [
+        "F",
+        "H",
+        "I",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "A"
+      ],
+      "zero_pe": [
+        10,
+        15
+      ]
+    },
+    {
+      "mode": "产品型",
+      "prefixes": [
+        "C"
+      ],
+      "zero_pe": [
+        7,
+        8
+      ]
+    }
+  ],
+  "default": {
+    "mode": "运营型",
+    "zero_pe": [
+      10,
+      15
+    ]
+  },
+  "overrides": {
+    "product_to_operation": {
+      "gross_margin_max": 22,
+      "sale_expense_ratio_min": 18
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "dimensions": {
+    "profit": 0.25,
+    "cashflow": 0.2,
+    "growth": 0.15,
+    "solvency": 0.15,
+    "operation": 0.15,
+    "asset": 0.1
+  },
+  "profit": {
+    "roe": 0.4,
+    "net_margin": 0.3,
+    "gross_margin": 0.2,
+    "roic": 0.1
+  },
+  "cashflow": {
+    "nco": 0.4,
+    "cash_sales": 0.3,
+    "fcf_margin": 0.2,
+    "stability": 0.1
+  },
+  "growth": {
+    "rev_cagr": 0.25,
+    "np_cagr": 0.25,
+    "rev_yoy_now": 0.15,
+    "np_yoy_now": 0.1,
+    "cash_quality": 0.05,
+    "deduct_ratio": 0.1,
+    "consistency": 0.1
+  },
+  "solvency": {
+    "current_ratio": 0.2,
+    "quick_ratio": 0.25,
+    "cash_ratio": 0.25,
+    "interest_cover": 0.3
+  },
+  "operation": {
+    "asset_turnover": 0.25,
+    "inv_days": 0.2,
+    "ar_days": 0.25,
+    "ap_days": 0.15,
+    "ccc": 0.15
+  },
+  "asset_general": {
+    "debt_ratio": 0.3,
+    "int_debt_ratio": 0.25,
+    "goodwill_ratio": 0.25
+  },
+  "asset_bank": {
+    "npl": 0.45,
+    "provision": 0.35,
+    "car": 0.2
+  }
+}

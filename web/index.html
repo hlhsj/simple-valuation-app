@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>估值助手 · A股企业评价与估值</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f5bd7'/%3E%3Cpath d='M9 21l4-6 3 3 6-8' stroke='%23fff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --line:#e3e6ec; --line-2:#eef0f4;
+    --text:#1a1d24; --text-2:#5a6270; --text-3:#8b93a3;
+    --brand:#2f5bd7; --brand-soft:#eaf0ff;
+    --red:#d93025; --red-soft:#fdeceb;
+    --amber:#b8860b; --amber-soft:#fdf6e3;
+    --green:#1a7f4b; --green-soft:#e9f6ef;
+    --gray-soft:#f1f3f6;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px -12px rgba(16,24,40,.12);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 64px}
+
+  header{border-bottom:1px solid var(--line);background:rgba(255,255,255,.86);backdrop-filter:blur(8px);position:sticky;top:0;z-index:30}
+  .bar{max-width:1080px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .logo{font-size:16px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+  .logo span{color:var(--brand)}
+  .tagline{font-size:12px;color:var(--text-3);white-space:nowrap}
+  .search{position:relative;flex:1;min-width:260px;max-width:520px;margin-left:auto}
+  .search input{
+    width:100%;padding:9px 14px 9px 36px;border:1px solid var(--line);border-radius:9px;
+    background:var(--panel);font-size:14px;color:var(--text);outline:none;transition:.16s;
+  }
+  .search input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+  .search .ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:15px}
+  .search button{
+    position:absolute;right:5px;top:50%;transform:translateY(-50%);
+    border:0;background:var(--brand);color:#fff;border-radius:7px;padding:5px 13px;
+    font-size:13px;cursor:pointer;font-weight:500
+  }
+  .search button:disabled{opacity:.5;cursor:not-allowed}
+  .sug{
+    position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--panel);
+    border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);
+    overflow:hidden;display:none;z-index:40
+  }
+  .sug.on{display:block}
+  .sug-item{padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px}
+  .sug-item:hover,.sug-item.sel{background:var(--brand-soft)}
+  .sug-item .c{color:var(--text-3);font-variant-numeric:tabular-nums;min-width:56px}
+  .sug-item .m{margin-left:auto;font-size:11px;color:var(--text-3);background:var(--gray-soft);padding:1px 7px;border-radius:20px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .pad{padding:20px 22px}
+  .sec-h{font-size:12px;font-weight:600;letter-spacing:.6px;color:var(--text-3);text-transform:uppercase;margin:0 0 12px}
+
+  .empty{text-align:center;padding:72px 24px;color:var(--text-3)}
+  .empty h2{font-size:17px;color:var(--text-2);font-weight:600;margin:0 0 10px}
+  .empty p{margin:5px 0;font-size:13px}
+  .hint-chips{margin-top:22px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .chip{
+    border:1px solid var(--line);background:var(--panel);border-radius:20px;
+    padding:5px 14px;font-size:12.5px;color:var(--text-2);cursor:pointer;transition:.15s
+  }
+  .chip:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+
+  .loading{padding:64px 24px;text-align:center}
+  .spin{
+    width:34px;height:34px;border:3px solid var(--line-2);border-top-color:var(--brand);
+    border-radius:50%;margin:0 auto 20px;animation:sp .8s linear infinite
+  }
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .loading .t{font-size:15px;font-weight:600;margin-bottom:6px}
+  .loading .s{font-size:12.5px;color:var(--text-3)}
+  .loading .secs{font-variant-numeric:tabular-nums;color:var(--brand);font-weight:600}
+
+  .err{padding:20px 22px;border-left:3px solid var(--red);background:var(--red-soft);border-radius:10px;color:#8a1f18;font-size:13.5px}
+
+  .head{padding:22px 24px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap}
+  .head h1{font-size:22px;margin:0 0 6px;font-weight:700;letter-spacing:.2px}
+  .head .sub{font-size:12.5px;color:var(--text-3);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .pill{background:var(--gray-soft);padding:2px 9px;border-radius:20px;font-size:11.5px;color:var(--text-2)}
+  .price{margin-left:auto;text-align:right}
+  .price .n{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+  .price .d{font-size:12px;color:var(--text-3);margin-top:3px}
+  .badge{
+    display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:9px;
+    font-size:13.5px;font-weight:600;white-space:nowrap
+  }
+  .b-pass{background:var(--green-soft);color:var(--green)}
+  .b-watch{background:var(--amber-soft);color:var(--amber)}
+  .b-high{background:#fdefe6;color:#b45309}
+  .b-fail{background:var(--red-soft);color:var(--red)}
+
+  .grid{display:grid;grid-template-columns:1fr 340px;gap:16px;margin-top:16px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:16px;min-width:0}
+  @media (max-width:860px){.grid{grid-template-columns:1fr}}
+
+  .flag{display:flex;gap:10px;padding:11px 0;border-top:1px solid var(--line-2);font-size:13px;line-height:1.65}
+  .flag:first-of-type{border-top:0}
+  .flag .k{flex:0 0 auto;font-weight:700;font-size:11px;padding:2px 7px;border-radius:5px;height:fit-content;margin-top:2px;letter-spacing:.3px}
+  .flag.hard .k{background:var(--red);color:#fff}
+  .flag.soft .k{background:var(--amber-soft);color:var(--amber)}
+  .flag .txt{color:var(--text-2)}
+  .ok-line{font-size:13px;color:var(--green);display:flex;align-items:center;gap:8px;padding:6px 0}
+
+  .radar-box{display:flex;flex-direction:column;align-items:center;padding:6px 0 0}
+  .score-big{font-size:34px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .score-big em{font-size:15px;font-weight:600;font-style:normal;margin-left:6px;color:var(--text-3)}
+  .dims{margin-top:14px;width:100%;display:grid;gap:7px}
+  .dim{display:grid;grid-template-columns:68px 1fr 38px;align-items:center;gap:9px;font-size:11.5px;color:var(--text-2)}
+  .pbar{display:block;height:5px;background:var(--line-2);border-radius:3px;overflow:hidden}
+  .pbar i{display:block;height:100%;border-radius:3px;background:var(--brand);transition:width .5s ease}
+  .dim .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
+
+  .val-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:4px}
+  @media (max-width:560px){.val-grid{grid-template-columns:repeat(2,1fr)}}
+  .val-cell{background:var(--gray-soft);border-radius:10px;padding:12px 14px}
+  .val-cell .l{font-size:11.5px;color:var(--text-3);margin-bottom:5px}
+  .val-cell .v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.2px}
+  .val-cell .v small{font-size:11px;font-weight:500;color:var(--text-3);margin-left:3px}
+  .verdict-row{display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line-2);flex-wrap:wrap}
+  .verdict-main{font-size:16px;font-weight:700}
+  .verdict-sub{font-size:12.5px;color:var(--text-3)}
+  .caveat{margin-top:14px;padding:10px 14px;background:var(--amber-soft);border-radius:9px;font-size:12.5px;color:#7c5a00;line-height:1.6}
+
+  .foot{margin-top:22px;text-align:center;font-size:11.5px;color:var(--text-3);line-height:1.9}
+  .kbd{background:var(--panel);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:11px;font-family:ui-monospace,monospace}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="logo">估值<span>助手</span></div>
+    <div class="tagline">A股企业评价与估值 · 本地运行</div>
+    <div class="search">
+      <span class="ico">⌕</span>
+      <input id="q" type="text" autocomplete="off" spellcheck="false"
+             placeholder="输入代码 / 名称 / 拼音首字母，如 600519、茅台、gzmt">
+      <button id="go">计算</button>
+      <div class="sug" id="sug"></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="stage">
+    <div class="empty">
+      <h2>输入一只股票，算出它值多少钱</h2>
+      <p>五层漏斗：排雷 → 六维打分 → 企业画像 → 主辅模型估值 → 期望收益与仓位</p>
+      <p style="color:var(--text-3);font-size:12px">全部取自公开免费数据源，结果仅供研究参考，不构成投资建议</p>
+      <div class="hint-chips">
+        <span class="chip" data-c="600519">贵州茅台</span>
+        <span class="chip" data-c="000858">五粮液</span>
+        <span class="chip" data-c="601668">中国建筑</span>
+        <span class="chip" data-c="300750">宁德时代</span>
+        <span class="chip" data-c="600036">招商银行</span>
+        <span class="chip" data-c="688981">中芯国际</span>
+      </div>
+    </div>
+  </div>
+  <div class="foot">
+    数据来源：腾讯行情 / 东方财富 / 新浪三表　·　所有计算在本机完成，不上传任何数据<br>
+    按 <span class="kbd">Enter</span> 直接计算选中项，<span class="kbd">↑</span><span class="kbd">↓</span> 切换候选
+  </div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const stage = $('#stage'), inp = $('#q'), sugBox = $('#sug'), goBtn = $('#go');
+
+const DIMS = [
+  ['profit','盈利能力',25],['cashflow','现金流质量',20],['growth','成长能力',15],
+  ['solvency','偿债能力',15],['operation','营运能力',15],['asset','资产质量',10]
+];
+
+let items = [], sel = -1, timer = null, curCode = null, tick = null;
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = (v, d = 2) => (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(d);
+const money = v => v == null || isNaN(v) ? '—' : (Math.abs(v) >= 100 ? Math.round(v) : Number(v).toFixed(2));
+const pct = (v, d = 1) => (v === null || v === undefined || isNaN(v)) ? '—' : (v * 100).toFixed(d) + '%';
+
+const RISK = {
+  '不通过': ['b-fail', '硬性排除'],
+  '高危':   ['b-high', '减分项偏多'],
+  '关注':   ['b-watch','有需要留意的点'],
+  '正常':   ['b-pass', '未发现问题'],
+};
+
+const VERDICT_COLOR = v => {
+  if (!v) return 'var(--text-3)';
+  if (v.includes('分批') || v.includes('建仓') || v.includes('接近')) return 'var(--green)';
+  if (v.includes('不符合') || v.includes('回避') || v.includes('淘汰')) return 'var(--red)';
+  if (v.includes('不追') || v.includes('观望')) return 'var(--amber)';
+  return 'var(--text-2)';
+};
+
+inp.addEventListener('input', () => {
+  const q = inp.value.trim();
+  clearTimeout(timer);
+  if (q.length < 1) { hideSug(); return; }
+  timer = setTimeout(async () => {
+    try {
+      const r = await fetch('/api/search?q=' + encodeURIComponent(q));
+      const d = await r.json();
+      items = d.items || []; sel = items.length ? 0 : -1; renderSug();
+    } catch { hideSug(); }
+  }, 220);
+});
+
+function renderSug() {
+  if (!items.length) { hideSug(); return; }
+  sugBox.innerHTML = items.map((it, i) =>
+    `<div class="sug-item${i === sel ? ' sel' : ''}" data-i="${i}">
+       <span class="c">${esc(it.code)}</span>
+       <span>${esc(it.name)}</span>
+       <span class="m">${esc(it.market || '')}</span>
+     </div>`).join('');
+  sugBox.classList.add('on');
+}
+function hideSug() { sugBox.classList.remove('on'); items = []; sel = -1; }
+
+sugBox.addEventListener('mousedown', e => {
+  const el = e.target.closest('.sug-item');
+  if (el) { const it = items[+el.dataset.i]; inp.value = it.name; hideSug(); load(it.code); }
+});
+
+inp.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); if (items.length) { sel = (sel + 1) % items.length; renderSug(); } }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); if (items.length) { sel = (sel - 1 + items.length) % items.length; renderSug(); } }
+  else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (items.length && sel >= 0) { const it = items[sel]; inp.value = it.name; hideSug(); load(it.code); }
+    else submitRaw();
+  } else if (e.key === 'Escape') hideSug();
+});
+
+goBtn.addEventListener('click', () => {
+  if (items.length && sel >= 0) { const it = items[sel]; inp.value = it.name; hideSug(); load(it.code); }
+  else submitRaw();
+});
+
+async function submitRaw() {
+  const q = inp.value.trim();
+  if (!q) return;
+  if (/^\d{6}$/.test(q)) return load(q);
+  try {
+    const r = await fetch('/api/search?q=' + encodeURIComponent(q));
+    const d = await r.json();
+    if (d.items && d.items.length) { inp.value = d.items[0].name; load(d.items[0].code); }
+    else showErr('没找到匹配的股票，换个关键词或直接输入 6 位代码试试。');
+  } catch (e) { showErr('搜索失败：' + e.message); }
+}
+
+document.querySelectorAll('.chip').forEach(c =>
+  c.addEventListener('click', () => load(c.dataset.c)));
+
+function showErr(msg) {
+  stage.innerHTML = `<div class="card"><div class="pad"><div class="err">${esc(msg)}</div></div></div>`;
+}
+
+async function load(code) {
+  curCode = code;
+  history.replaceState(null, '', '#' + code);
+  const t0 = Date.now();
+  stage.innerHTML = `<div class="card"><div class="loading">
+    <div class="spin"></div>
+    <div class="t">正在获取数据并计算…</div>
+    <div class="s">首次计算约 10–20 秒（要取行情、五年财报、三张表、同业样本）<br>
+      已用 <span class="secs"><span id="tick">0</span> 秒</span></div>
+  </div></div>`;
+  clearInterval(tick);
+  tick = setInterval(() => { const el = $('#tick'); if (el) el.textContent = ((Date.now() - t0) / 1000).toFixed(0); }, 200);
+
+  try {
+    const r = await fetch('/api/valuate?code=' + encodeURIComponent(code));
+    const d = await r.json();
+    clearInterval(tick);
+    if (!d.ok) { showErr(d.error || '计算失败'); return; }
+    render(d.row);
+  } catch (e) {
+    clearInterval(tick);
+    showErr('请求失败：' + e.message + '（请确认网络可访问行情数据源）');
+  }
+}
+
+function render(r) {
+  const g = r.gate || {};
+  const rejected = r.rejected, avoid = r.avoid;
+  const [bcls, bnote] = RISK[g.risk_level] || ['b-pass', ''];
+  const isBadRisk = g.risk_level === '不通过';
+
+  let h = `<div class="card head">
+    <div>
+      <h1>${esc(r.name)} <span style="font-size:14px;color:var(--text-3);font-weight:500">${esc(r.code)}</span></h1>
+      <div class="sub">
+        <span>${esc(r.industry || '—')}</span>
+        ${r.mode ? `<span class="pill">${esc(r.mode)}</span>` : ''}
+        ${r.stage ? `<span class="pill">${esc(r.stage)}${r.substage ? ' · ' + esc(r.substage) : ''}</span>` : ''}
+        ${r._cached ? '<span class="pill">缓存结果</span>' : `<span class="pill">耗时 ${num(r._elapsed, 1)}s</span>`}
+      </div>
+    </div>
+    <div class="price">
+      <div class="n">${num(r.price)}</div>
+      <div class="d">PE ${num(r.pe)}　PB ${num(r.pb)}</div>
+    </div>
+  </div>`;
+
+  const hard = g.hard || [], soft = g.soft || [];
+  let flags = '';
+  if (hard.length) flags += hard.map(x => `<div class="flag hard"><span class="k">否决</span><span class="txt">${esc(x)}</span></div>`).join('');
+  if (soft.length) flags += soft.map(x => `<div class="flag soft"><span class="k">减分</span><span class="txt">${esc(x)}</span></div>`).join('');
+  if (!hard.length && !soft.length) flags = `<div class="ok-line">✓ 硬否决 0 项、减分 0 项，未发现明显财务风险</div>`;
+
+  const gateCard = `<div class="card pad">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+      <h2 class="sec-h" style="margin:0">一、排雷</h2>
+      <span class="badge ${bcls}" style="margin-left:auto">${esc(g.risk_level || '—')}${bnote ? ' · ' + bnote : ''}</span>
+    </div>
+    ${rejected || avoid ? `<div class="caveat" style="margin:8px 0 4px">${
+      esc(rejected ? '硬否决命中即终止评估，不进入六维与估值，因此没有分数与价格。'
+                   : (r.avoid_reason || '该行业不适用本估值模型。'))}</div>` : ''}
+    ${flags}
+  </div>`;
+
+  const dims = r.dims || {};
+  const sc = r.score_total;
+  const scoreCard = `<div class="card pad">
+    <h2 class="sec-h">二、六维评分</h2>
+    <div class="radar-box">
+      ${radar(dims)}
+      <div class="score-big" style="margin-top:10px">${num(sc, 1)}<em>${esc(r.grade || '')} 级</em></div>
+      <div class="dims">
+        ${DIMS.map(([k, label, w]) => {
+          const v = dims[k];
+          return `<div class="dim">
+            <span>${label}<span style="color:var(--text-3);font-size:10px"> ${w}%</span></span>
+            <span class="pbar"><i style="width:${v == null ? 0 : Math.max(0, Math.min(100, v))}%"></i></span>
+            <span class="v">${v == null ? '—' : num(v, 0)}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
+
+  stage.innerHTML = h + `<div class="grid">
+      <div class="col">${gateCard}${valCard(r)}</div>
+      <div class="col">${scoreCard}</div>
+    </div>`;
+
+  if (rejected || avoid) {
+    const right = stage.querySelectorAll('.col')[1];
+    if (right) right.innerHTML = `<div class="card pad">
+      <h2 class="sec-h">二、六维评分</h2>
+      <div style="padding:54px 10px;text-align:center;color:var(--text-3)">
+        <div style="font-size:28px;line-height:1;margin-bottom:14px;opacity:.55">⊘</div>
+        <div style="font-size:13px;line-height:1.9">
+          ${rejected ? '硬否决已终止评估' : '该行业不适用本模型'}<br>不产出六维分数与估值
+        </div>
+      </div>
+    </div>`;
+  }
+}
+
+function valCard(r) {
+  const g = r.gate || {};
+  if (r.rejected || r.avoid) return '';
+  const has = r.fair_low != null && r.fair_high != null;
+  if (!has) {
+    return `<div class="card pad">
+      <h2 class="sec-h">三、估值与决策</h2>
+      <div class="verdict-row" style="border-top:0;margin-top:0;padding-top:0">
+        <span class="verdict-main" style="color:var(--text-3)">无法定价</span>
+        <span class="verdict-sub">${esc(r.caveat || '主模型在当前数据下失效（如持续亏损、净资产为负），不输出区间与买点。')}</span>
+      </div>
+    </div>`;
+  }
+  const v = String(r.verdict || '');
+  const m = v.match(/^([^（(]+)[（(]?(.*?)[）)]?$/);
+  const main = (m ? m[1] : v).trim();
+  const sub = m && m[2] ? m[2].replace(/[）)]$/, '') : '';
+
+  return `<div class="card pad">
+    <h2 class="sec-h">三、估值与决策</h2>
+    <div class="val-grid">
+      <div class="val-cell"><div class="l">合理区间</div>
+        <div class="v">${money(r.fair_low)}<small>–</small>${money(r.fair_high)}</div></div>
+      <div class="val-cell"><div class="l">理论安全边际</div><div class="v">${money(r.buy)}</div></div>
+      <div class="val-cell"><div class="l">期望年化收益</div>
+        <div class="v" style="color:${(r.e_return || 0) >= 0 ? 'var(--red)' : 'var(--green)'}">${pct(r.e_return)}</div></div>
+      <div class="val-cell"><div class="l">主模型</div><div class="v" style="font-size:15px">${esc(r.primary_model || '—')}</div></div>
+    </div>
+    <div class="verdict-row">
+      <span class="verdict-main" style="color:${VERDICT_COLOR(v)}">${esc(main)}</span>
+      ${sub ? `<span class="verdict-sub">${esc(sub)}</span>` : ''}
+      <span class="verdict-sub" style="margin-left:auto">${esc(r.market_state || '')}${r.market_state ? ' · ' : ''}现价 ${num(r.price)}</span>
+    </div>
+    ${r.caveat ? `<div class="caveat">${esc(r.caveat)}</div>` : ''}
+  </div>`;
+}
+
+function radar(dims) {
+  const cx = 130, cy = 122, R = 84, n = DIMS.length;
+  const pt = (i, rr) => {
+    const a = -Math.PI / 2 + i * 2 * Math.PI / n;
+    return [cx + rr * Math.cos(a), cy + rr * Math.sin(a)];
+  };
+  let rings = '';
+  [0.25, 0.5, 0.75, 1].forEach(k => {
+    const p = DIMS.map((_, i) => pt(i, R * k).join(',')).join(' ');
+    rings += `<polygon points="${p}" fill="none" stroke="#e9ecf2" stroke-width="1"/>`;
+  });
+  let spokes = DIMS.map((_, i) => {
+    const [x, y] = pt(i, R);
+    return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e9ecf2" stroke-width="1"/>`;
+  }).join('');
+
+  const pts = DIMS.map(([k], i) => {
+    const v = dims[k] == null ? 0 : Math.max(0, Math.min(100, dims[k]));
+    return pt(i, R * v / 100);
+  });
+  const poly = pts.map(p => p.join(',')).join(' ');
+  const dots = pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.8" fill="#2f5bd7"/>`).join('');
+  const labels = DIMS.map(([, label], i) => {
+    const [x, y] = pt(i, R + 20);
+    const anchor = Math.abs(x - cx) < 6 ? 'middle' : (x > cx ? 'start' : 'end');
+    return `<text x="${x}" y="${y + 4}" text-anchor="${anchor}"
+              font-size="10.5" fill="#8b93a3">${label}</text>`;
+  }).join('');
+
+  return `<svg width="260" height="244" viewBox="0 0 260 244">
+    ${rings}${spokes}
+    <polygon points="${poly}" fill="rgba(47,91,215,.14)" stroke="#2f5bd7" stroke-width="1.8" stroke-linejoin="round"/>
+    ${dots}${labels}
+  </svg>`;
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const h = location.hash.replace('#', '');
+  if (/^\d{6}$/.test(h)) load(h);
+});
+window.addEventListener('hashchange', () => {
+  const h = location.hash.replace('#', '');
+  if (/^\d{6}$/.test(h) && h !== curCode) load(h);
+});
+</script>
+</body>
+</html>
