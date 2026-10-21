@@ -36,6 +36,10 @@ BASE = base_dir()
 WEB_DIR = BASE / "web"
 sys.path.insert(0, str(BASE / "src"))
 
+if getattr(sys, "frozen", False):
+    import os
+    os.environ.setdefault("SVE_DATA_DIR", str(BASE / "data"))
+
 def _search_eastmoney(q: str, count: int = 8) -> list[dict]:
     url = ("https://searchapi.eastmoney.com/api/suggest/get?"
            f"input={urllib.parse.quote(q)}&type=14&count={count}"

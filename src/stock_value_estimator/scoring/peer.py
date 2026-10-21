@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 
-DATA_PATH = Path(__file__).resolve().parents[3] / "data" / "stock_industry_map.json"
+def _data_root() -> Path:
+    env = os.environ.get("SVE_DATA_DIR")
+    if env:
+        return Path(env)
+    return Path(__file__).resolve().parents[3] / "data"
+
+DATA_PATH = _data_root() / "stock_industry_map.json"
 
 @lru_cache(maxsize=1)
 def _load() -> dict[str, str]:

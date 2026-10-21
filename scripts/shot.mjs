@@ -1,48 +1,58 @@
 import { mkdirSync } from 'node:fs'
-
-const _pw = await import(
-  process.env.PW ?? 'file:///F:/AI/WorkBuddy/sc/node_modules/playwright-core/index.js')
+const _pw = await import(process.env.PW ?? 'file:///F:/AI/WorkBuddy/sc/node_modules/playwright-core/index.js')
 const chromium = _pw.chromium ?? _pw.default?.chromium
-
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-const BASE = process.env.BASE ?? 'http://127.0.0.1:8765'
-const OUT = new URL('../shots/', import.meta.url).pathname.replace(/^\//, '')
+const OUT = 'F:/AI/WorkBuddy/stock-valuation-app/shots/'
 mkdirSync(OUT, { recursive: true })
 
-const browser = await chromium.launch({ executablePath: CHROME, headless: true })
-const page = await browser.newPage({ viewport: { width: 1240, height: 980 }, deviceScaleFactor: 2 })
+const b = await chromium.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true })
+const p = await b.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 })
 const errs = []
-page.on('pageerror', e => errs.push('pageerror: ' + e.message))
-page.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()) })
+p.on('pageerror', e => errs.push('pageerror: ' + e.message))
+p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()) })
 
-await page.goto(BASE, { waitUntil: 'networkidle' })
-await page.screenshot({ path: OUT + '01-empty.png' })
+await p.goto('http://127.0.0.1:8765/', { waitUntil: 'networkidle' })
+await p.screenshot({ path: OUT + 'v29-01-empty.png' })
 
-await page.fill('#q', 'gzmt')
-await page.waitForSelector('.sug.on .sug-item', { timeout: 20000 })
-const sug = await page.textContent('.sug-item')
-console.log('联想首项:', sug.trim().replace(/\s+/g, ' '))
-await page.screenshot({ path: OUT + '02-suggest.png' })
+await p.fill('#q', '')
+await p.type('#q', 'gzmt', { delay: 40 })
+await p.waitForSelector('.sug-item', { timeout: 20000 })
+console.log('联想首项:', (await p.textContent('.sug-item')).trim())
+await p.screenshot({ path: OUT + 'v29-02-suggest.png' })
 
-await page.click('.sug-item')
-await page.waitForSelector('.card.head', { timeout: 180000 })
-await page.waitForTimeout(600)
-await page.screenshot({ path: OUT + '03-result.png', fullPage: true })
+await p.fill('#q', '600519, 000651, 伊利股份')
+await p.waitForTimeout(200)
+console.log('按钮文案:', (await p.textContent('#run-text')).trim())
+await p.screenshot({ path: OUT + 'v29-03-filled.png' })
 
-const t = await page.textContent('body')
+await p.click('#run')
+await p.waitForSelector('tbody tr', { timeout: 300000 })
+await p.waitForFunction(() => !document.querySelector('#stop') || document.querySelector('#stop').classList.contains('hidden'), { timeout: 300000 })
+await p.waitForTimeout(500)
+await p.screenshot({ path: OUT + 'v29-04-table.png', fullPage: true })
+
+const rowCount = await p.locator('tbody tr').count()
+console.log('结果行数:', rowCount)
+
+await p.click('tbody tr:first-child')
+await p.waitForSelector('.dgrid', { timeout: 30000 })
+await p.waitForTimeout(800)
+await p.screenshot({ path: OUT + 'v29-05-detail.png', fullPage: true })
+
+const t = await p.textContent('body')
 const checks = {
-  '头部名称': !!await page.$('.head h1'),
-  '风险徽章': !!await page.$('.badge'),
-  '六维雷达': !!await page.$('svg polygon'),
-  '合理区间': t.includes('合理区间'),
-  '安全边际': t.includes('理论安全边际'),
-  '期望收益': t.includes('期望年化收益'),
-  '排雷区块': t.includes('一、排雷'),
-  '六维区块': t.includes('二、六维评分'),
-  '估值区块': t.includes('三、估值与决策'),
+  '无全局导航栏': !(await p.$('nav')),
+  '页面标题': t.includes('股票估值实验室'),
+  'v2.9 稳定版徽章': t.includes('v2.9') && t.includes('稳定版'),
+  '失真风险提示': t.includes('程序化估值有失真风险'),
+  '结果表': !!await p.$('tbody tr'),
+  '判定已映射': /计算合理|接近合理|观望|不符合条件|淘汰|回避/.test(t),
+  '估值区间标尺': !!await p.$('.ruler-band'),
+  '六维进度条': !!await p.$('.dim-fill'),
+  'L1 排雷': t.includes('L1 排雷'),
+  '模型参数': t.includes('模型参数'),
+  '免责声明': t.includes('免责声明'),
 }
 console.log('\n界面断言:')
 for (const [k, v] of Object.entries(checks)) console.log(`  ${v ? '✓' : '✗'} ${k}`)
-
 console.log('\n页面错误:', errs.length ? errs : '无')
-await browser.close()
+await b.close()

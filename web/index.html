@@ -3,452 +3,799 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>估值助手 · A股企业评价与估值</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f5bd7'/%3E%3Cpath d='M9 21l4-6 3 3 6-8' stroke='%23fff' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>股票估值实验室 · v2.9 稳定版</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23d8ab4a'/%3E%3Cpath d='M9 21l4-6 3 3 6-8' stroke='%23060910' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
-  :root{
-    --bg:#f6f7f9; --panel:#ffffff; --line:#e3e6ec; --line-2:#eef0f4;
-    --text:#1a1d24; --text-2:#5a6270; --text-3:#8b93a3;
-    --brand:#2f5bd7; --brand-soft:#eaf0ff;
-    --red:#d93025; --red-soft:#fdeceb;
-    --amber:#b8860b; --amber-soft:#fdf6e3;
-    --green:#1a7f4b; --green-soft:#e9f6ef;
-    --gray-soft:#f1f3f6;
-    --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px -12px rgba(16,24,40,.12);
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;padding:0}
-  body{
-    background:var(--bg); color:var(--text);
-    font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
-    -webkit-font-smoothing:antialiased;
-  }
-  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 64px}
 
-  header{border-bottom:1px solid var(--line);background:rgba(255,255,255,.86);backdrop-filter:blur(8px);position:sticky;top:0;z-index:30}
-  .bar{max-width:1080px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  .logo{font-size:16px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
-  .logo span{color:var(--brand)}
-  .tagline{font-size:12px;color:var(--text-3);white-space:nowrap}
-  .search{position:relative;flex:1;min-width:260px;max-width:520px;margin-left:auto}
-  .search input{
-    width:100%;padding:9px 14px 9px 36px;border:1px solid var(--line);border-radius:9px;
-    background:var(--panel);font-size:14px;color:var(--text);outline:none;transition:.16s;
-  }
-  .search input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
-  .search .ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:15px}
-  .search button{
-    position:absolute;right:5px;top:50%;transform:translateY(-50%);
-    border:0;background:var(--brand);color:#fff;border-radius:7px;padding:5px 13px;
-    font-size:13px;cursor:pointer;font-weight:500
-  }
-  .search button:disabled{opacity:.5;cursor:not-allowed}
-  .sug{
-    position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--panel);
-    border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);
-    overflow:hidden;display:none;z-index:40
-  }
-  .sug.on{display:block}
-  .sug-item{padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px}
-  .sug-item:hover,.sug-item.sel{background:var(--brand-soft)}
-  .sug-item .c{color:var(--text-3);font-variant-numeric:tabular-nums;min-width:56px}
-  .sug-item .m{margin-left:auto;font-size:11px;color:var(--text-3);background:var(--gray-soft);padding:1px 7px;border-radius:20px}
+:root{
+  --ink-950:#060910; --ink-900:#0a0f18; --ink-850:#0e1520; --ink-800:#121b28;
+  --ink-750:#17212f; --ink-700:#1d2938; --ink-600:#2a3849;
+  --mist-100:#e8eef6; --mist-200:#dfe7f0; --mist-300:#aebbcb;
+  --mist-400:#9aa9ba; --mist-500:#7d8da1; --mist-600:#6b7a8c; --mist-700:#586678;
+  --gold:#d8ab4a; --gold-soft:#f0d69a;
+  --up:#ef5350; --down:#26a37a;
+  --serif:'Songti SC','STSong','SimSun','Noto Serif SC',Georgia,serif;
+  --sans:'PingFang SC','Microsoft YaHei','Hiragino Sans GB',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ink-950); color:var(--mist-100);
+  font:14px/1.55 var(--sans); -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+.serif{font-family:var(--serif)}
+.hidden{display:none !important}
 
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
-  .pad{padding:20px 22px}
-  .sec-h{font-size:12px;font-weight:600;letter-spacing:.6px;color:var(--text-3);text-transform:uppercase;margin:0 0 12px}
+.page{max-width:1024px;margin:0 auto;padding:40px 24px 72px}
+@media (max-width:700px){.page{padding:24px 16px 56px}}
 
-  .empty{text-align:center;padding:72px 24px;color:var(--text-3)}
-  .empty h2{font-size:17px;color:var(--text-2);font-weight:600;margin:0 0 10px}
-  .empty p{margin:5px 0;font-size:13px}
-  .hint-chips{margin-top:22px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-  .chip{
-    border:1px solid var(--line);background:var(--panel);border-radius:20px;
-    padding:5px 14px;font-size:12.5px;color:var(--text-2);cursor:pointer;transition:.15s
-  }
-  .chip:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+.ph{margin-bottom:20px;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.ph-eyebrow{margin:0;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--mist-700)}
+.ph-title{margin:6px 0 0;font:400 26px/1.25 var(--serif);color:var(--mist-100)}
+.ph-desc{margin:6px 0 0;max-width:640px;font-size:13px;color:var(--mist-500)}
+.version-badge{
+  display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink-700);
+  background:var(--ink-900);border-radius:12px;padding:6px 12px;font-size:12px;color:var(--mist-500);
+  white-space:nowrap
+}
+.version-badge svg{color:var(--gold)}
 
-  .loading{padding:64px 24px;text-align:center}
-  .spin{
-    width:34px;height:34px;border:3px solid var(--line-2);border-top-color:var(--brand);
-    border-radius:50%;margin:0 auto 20px;animation:sp .8s linear infinite
-  }
-  @keyframes sp{to{transform:rotate(360deg)}}
-  .loading .t{font-size:15px;font-weight:600;margin-bottom:6px}
-  .loading .s{font-size:12.5px;color:var(--text-3)}
-  .loading .secs{font-variant-numeric:tabular-nums;color:var(--brand);font-weight:600}
+.card{
+  border:1px solid var(--ink-700);background:var(--ink-900);
+  border-radius:16px;padding:16px;
+}
+@media (min-width:768px){.card{padding:20px}}
+.card+.card{margin-top:16px}
 
-  .err{padding:20px 22px;border-left:3px solid var(--red);background:var(--red-soft);border-radius:10px;color:#8a1f18;font-size:13.5px}
+.input-wrap{position:relative}
+.input-ico{position:absolute;left:14px;top:12px;color:var(--mist-700);pointer-events:none}
+textarea#q{
+  width:100%;resize:none;border:1px solid var(--ink-700);background:var(--ink-950);
+  border-radius:12px;padding:10px 12px 10px 40px;font:13.5px/1.6 var(--sans);color:var(--mist-100);
+  outline:none;transition:.15s
+}
+textarea#q::placeholder{color:var(--mist-700)}
+textarea#q:focus{border-color:rgba(216,171,74,.5)}
+textarea#q:disabled{opacity:.6}
 
-  .head{padding:22px 24px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap}
-  .head h1{font-size:22px;margin:0 0 6px;font-weight:700;letter-spacing:.2px}
-  .head .sub{font-size:12.5px;color:var(--text-3);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .pill{background:var(--gray-soft);padding:2px 9px;border-radius:20px;font-size:11.5px;color:var(--text-2)}
-  .price{margin-left:auto;text-align:right}
-  .price .n{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
-  .price .d{font-size:12px;color:var(--text-3);margin-top:3px}
-  .badge{
-    display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:9px;
-    font-size:13.5px;font-weight:600;white-space:nowrap
-  }
-  .b-pass{background:var(--green-soft);color:var(--green)}
-  .b-watch{background:var(--amber-soft);color:var(--amber)}
-  .b-high{background:#fdefe6;color:#b45309}
-  .b-fail{background:var(--red-soft);color:var(--red)}
+.sug{margin-top:8px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.sug-label{font-size:11px;color:var(--mist-700)}
+.sug-item{
+  border:1px solid var(--ink-700);background:var(--ink-850);border-radius:6px;
+  padding:2px 7px;font-size:11.5px;color:var(--mist-300);cursor:pointer;
+  transition:.15s;font-family:inherit
+}
+.sug-item:hover{border-color:rgba(216,171,74,.4);color:var(--gold-soft)}
+.sug-item .c{margin-left:4px;font-size:10.5px;color:var(--mist-700)}
 
-  .grid{display:grid;grid-template-columns:1fr 340px;gap:16px;margin-top:16px;align-items:start}
-  .col{display:flex;flex-direction:column;gap:16px;min-width:0}
-  @media (max-width:860px){.grid{grid-template-columns:1fr}}
+.actions{margin-top:10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.btn{
+  display:inline-flex;align-items:center;gap:6px;border-radius:12px;border:1px solid transparent;
+  font:13px var(--sans);cursor:pointer;transition:.15s;height:40px;padding:0 16px
+}
+.btn-primary{background:var(--gold);color:#1a1205;font-weight:500;border-color:var(--gold)}
+.btn-primary:hover:not(:disabled){background:var(--gold-soft)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{
+  background:var(--ink-850);color:var(--mist-400);border-color:var(--ink-700);
+  height:36px;padding:0 12px;font-size:12.5px;border-radius:8px
+}
+.btn-ghost:hover{color:var(--mist-200)}
+.btn-stop:hover{color:var(--down)}
 
-  .flag{display:flex;gap:10px;padding:11px 0;border-top:1px solid var(--line-2);font-size:13px;line-height:1.65}
-  .flag:first-of-type{border-top:0}
-  .flag .k{flex:0 0 auto;font-weight:700;font-size:11px;padding:2px 7px;border-radius:5px;height:fit-content;margin-top:2px;letter-spacing:.3px}
-  .flag.hard .k{background:var(--red);color:#fff}
-  .flag.soft .k{background:var(--amber-soft);color:var(--amber)}
-  .flag .txt{color:var(--text-2)}
-  .ok-line{font-size:13px;color:var(--green);display:flex;align-items:center;gap:8px;padding:6px 0}
+.examples{margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:11.5px;color:var(--mist-700)}
+.examples button{
+  border:1px solid var(--ink-700);background:transparent;border-radius:6px;
+  padding:1px 6px;font-size:11px;color:var(--mist-500);cursor:pointer;transition:.15s;font-family:inherit
+}
+.examples button:hover{border-color:rgba(216,171,74,.4);color:var(--gold-soft)}
+@media (max-width:640px){.examples{margin-left:0;width:100%}}
 
-  .radar-box{display:flex;flex-direction:column;align-items:center;padding:6px 0 0}
-  .score-big{font-size:34px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-  .score-big em{font-size:15px;font-weight:600;font-style:normal;margin-left:6px;color:var(--text-3)}
-  .dims{margin-top:14px;width:100%;display:grid;gap:7px}
-  .dim{display:grid;grid-template-columns:68px 1fr 38px;align-items:center;gap:9px;font-size:11.5px;color:var(--text-2)}
-  .pbar{display:block;height:5px;background:var(--line-2);border-radius:3px;overflow:hidden}
-  .pbar i{display:block;height:100%;border-radius:3px;background:var(--brand);transition:width .5s ease}
-  .dim .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
+.progress-track{margin-top:12px;height:4px;border-radius:999px;background:var(--ink-850);overflow:hidden}
+.progress-fill{height:100%;border-radius:999px;background:var(--gold);transition:width .3s}
+.progress-text{margin:6px 0 0;font-size:11.5px;color:var(--mist-500)}
+.hint{margin:8px 0 0;font-size:11.5px;color:var(--mist-700);line-height:1.6}
 
-  .val-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:4px}
-  @media (max-width:560px){.val-grid{grid-template-columns:repeat(2,1fr)}}
-  .val-cell{background:var(--gray-soft);border-radius:10px;padding:12px 14px}
-  .val-cell .l{font-size:11.5px;color:var(--text-3);margin-bottom:5px}
-  .val-cell .v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.2px}
-  .val-cell .v small{font-size:11px;font-weight:500;color:var(--text-3);margin-left:3px}
-  .verdict-row{display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line-2);flex-wrap:wrap}
-  .verdict-main{font-size:16px;font-weight:700}
-  .verdict-sub{font-size:12.5px;color:var(--text-3)}
-  .caveat{margin-top:14px;padding:10px 14px;background:var(--amber-soft);border-radius:9px;font-size:12.5px;color:#7c5a00;line-height:1.6}
+.risk-notice{
+  margin:16px 0;display:flex;gap:10px;border:1px solid rgba(216,171,74,.35);
+  background:rgba(216,171,74,.1);border-radius:12px;padding:12px 16px
+}
+.risk-notice svg{color:var(--gold);flex:0 0 auto;margin-top:2px}
+.risk-title{margin:0;font-size:12.5px;font-weight:500;color:var(--gold-soft)}
+.risk-body{margin:2px 0 0;font-size:12.5px;line-height:1.65;color:var(--mist-500)}
 
-  .foot{margin-top:22px;text-align:center;font-size:11.5px;color:var(--text-3);line-height:1.9}
-  .kbd{background:var(--panel);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:11px;font-family:ui-monospace,monospace}
+.fail-card{border-color:rgba(38,163,122,.35)}
+.fail-title{margin:0 0 6px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;color:var(--down)}
+.fail-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mist-500)}
+.fail-list li{display:flex;gap:6px;align-items:flex-start}
+.fail-list .x{color:var(--down);flex:0 0 auto}
+.fail-list .k{color:var(--mist-300)}
+
+.res-head{margin:8px 0 10px;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px}
+.res-title{margin:0;font:400 18px var(--serif);color:var(--mist-100)}
+.res-sub{margin-left:8px;font-size:12px;color:var(--mist-700)}
+.res-note{font-size:11.5px;color:var(--mist-500)}
+
+.table-card{border:1px solid var(--ink-700);background:var(--ink-900);border-radius:16px;overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;min-width:860px;border-collapse:collapse;text-align:left;font-size:13px}
+thead th{
+  padding:10px 12px;font-size:11.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--mist-700);border-bottom:1px solid var(--ink-700);white-space:nowrap
+}
+tbody td{padding:10px 12px;border-bottom:1px solid rgba(29,41,56,.6);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer;transition:background .15s}
+tbody tr:hover{background:rgba(14,21,32,.4)}
+tbody tr.open{background:rgba(14,21,32,.6)}
+.c-idx{width:32px;text-align:center;font-size:11px;color:var(--mist-700)}
+.c-num{text-align:right;white-space:nowrap}
+.nm{font-weight:500;color:var(--mist-200)}
+.cd{margin-left:8px;font-size:11.5px;color:var(--mist-700)}
+.mode{font-size:12.5px;color:var(--mist-400)}
+.sub{font-size:11px;color:rgba(216,171,74,.8)}
+.score{font-family:var(--serif);font-size:14.5px;color:var(--mist-100)}
+.grade{margin-left:4px;border-radius:4px;padding:0 4px;font-size:11px}
+.gA{background:rgba(239,83,80,.1);color:var(--up)}
+.gB{background:rgba(216,171,74,.1);color:var(--gold-soft)}
+.gC{background:var(--ink-850);color:var(--mist-400)}
+.gD{background:rgba(38,163,122,.1);color:var(--down)}
+.model-tag{
+  display:inline-block;border:1px solid var(--ink-700);background:var(--ink-850);
+  border-radius:6px;padding:1px 6px;font-size:11.5px;color:var(--mist-300);white-space:nowrap
+}
+.price{font-family:var(--serif);font-size:13.5px;color:var(--mist-100)}
+.prem{margin-left:4px;font-size:11px}
+.prem.up{color:var(--up)} .prem.down{color:var(--down)}
+.vtag{display:inline-block;border:1px solid;border-radius:8px;padding:1px 8px;font-size:11.5px;white-space:nowrap}
+.v-up{border-color:rgba(239,83,80,.4);background:rgba(239,83,80,.1);color:var(--up)}
+.v-down{border-color:rgba(38,163,122,.4);background:rgba(38,163,122,.1);color:var(--down)}
+.v-gold{border-color:rgba(216,171,74,.4);background:rgba(216,171,74,.1);color:var(--gold-soft)}
+.v-plain{border-color:var(--ink-600);color:var(--mist-400)}
+
+.m-list{display:flex;flex-direction:column;gap:8px}
+.m-card{
+  display:block;width:100%;text-align:left;background:var(--ink-900);
+  border:1px solid var(--ink-700);border-radius:12px;padding:12px 14px;
+  color:inherit;font-family:inherit;cursor:pointer;transition:.15s
+}
+.m-card.open{border-color:rgba(216,171,74,.4);background:var(--ink-850)}
+.m-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.m-meta{margin:4px 0 0;font-size:11.5px;color:var(--mist-500)}
+.m-line{margin-top:6px;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--mist-400)}
+@media (min-width:768px){.m-list{display:none}}
+@media (max-width:767px){.table-card{display:none}}
+
+.detail-head{margin:16px 0 10px;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px}
+.detail-title{margin:0;font:400 19px var(--serif);color:var(--mist-100);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.detail-code{font-size:12.5px;color:var(--mist-700)}
+.cache-tag{border-radius:6px;background:var(--ink-850);padding:1px 6px;font-size:10.5px;color:var(--mist-700)}
+.collapse-btn{border:0;background:none;color:var(--mist-500);font:12px var(--sans);cursor:pointer;display:flex;align-items:center;gap:4px}
+.collapse-btn:hover{color:var(--gold-soft)}
+.detail-meta{margin:0 0 12px;font-size:12px;color:var(--mist-500)}
+
+.dgrid{display:grid;gap:16px;grid-template-columns:1fr}
+@media (min-width:1024px){.dgrid{grid-template-columns:2fr 1fr}}
+.dcol{display:flex;flex-direction:column;gap:16px}
+.dcol .card+.card{margin-top:0}
+.dcard-title{margin:0 0 12px;font:400 16px var(--serif);color:var(--mist-100)}
+.dcard-title.with-ico{display:flex;align-items:center;gap:6px}
+.dcard-title.with-ico svg{color:var(--gold)}
+
+.ruler-legend{margin:0 0 12px;font-size:11.5px;color:var(--mist-700)}
+.ruler{position:relative;margin:0 4px;height:96px;user-select:none}
+.ruler-axis{position:absolute;left:0;right:0;top:44px;height:1px;background:var(--ink-600)}
+.ruler-band{position:absolute;top:38px;height:13px;border-radius:2px;border:1px solid rgba(216,171,74,.4);background:rgba(216,171,74,.15)}
+.ruler-mark{position:absolute;top:0;height:100%}
+.ruler-line{position:absolute;left:0;top:28px;width:1.5px;height:32px;transform:translateX(-50%)}
+.ruler-line.dash{opacity:.75}
+.ruler-label{position:absolute;left:0;transform:translateX(-50%);text-align:center;white-space:nowrap}
+.ruler-v{display:block;font:11.5px/1.25 var(--serif)}
+.ruler-k{display:block;font-size:9.5px;line-height:1.25;color:var(--mist-700)}
+.ruler-end{position:absolute;bottom:-4px;font-size:10px;color:var(--mist-700)}
+.ruler-end.l{left:0} .ruler-end.r{right:0}
+.c-up{color:var(--up)} .c-down{color:var(--down)} .c-gold{color:var(--gold-soft)} .c-mist{color:var(--mist-100)}
+.bg-up{background:var(--up)} .bg-down{background:var(--down)} .bg-gold{background:var(--gold)}
+
+.kv{margin:8px 0 0;padding-top:12px;border-top:1px solid var(--ink-800);display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;font-size:12.5px}
+@media (min-width:768px){.kv{grid-template-columns:repeat(4,1fr)}}
+.kv .k{font-size:11.5px;color:var(--mist-700);display:block}
+.kv .v{font:14px var(--serif);white-space:nowrap}
+.e-return{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--ink-800);font-size:12px;color:var(--mist-500)}
+.e-return .serif{font-size:14px}
+
+.trend-line{margin:0;font-size:12.5px;line-height:1.7;color:var(--mist-400)}
+.trend-badge{display:inline-block;margin-right:8px;border:1px solid;border-radius:8px;padding:1px 8px;font-size:11.5px}
+.trend-sub{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--ink-800);font-size:12.5px;line-height:1.7;color:var(--mist-400)}
+.trend-sub .k{color:var(--mist-300)}
+.note-gold{margin:12px 0 0;border:1px solid rgba(216,171,74,.25);background:rgba(216,171,74,.05);border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.7;color:var(--gold-soft)}
+.dim-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.dim-name{width:40px;flex:0 0 auto;font-size:12px;color:var(--mist-500)}
+.dim-track{height:8px;flex:1;border-radius:999px;background:var(--ink-850);overflow:hidden}
+.dim-fill{height:100%;border-radius:999px;transition:width .4s ease}
+.dim-val{width:44px;flex:0 0 auto;text-align:right;font:12.5px var(--serif);color:var(--mist-300)}
+.score-big{margin:0;line-height:1}
+.score-big .n{font:30px var(--serif);color:var(--mist-100)}
+.score-big .g{margin-left:6px;border-radius:4px;padding:1px 6px;font-size:12px}
+.dim-head{margin-bottom:12px;display:flex;align-items:flex-end;justify-content:space-between}
+
+.gate-badge{display:inline-block;margin-bottom:10px;border:1px solid;border-radius:8px;padding:1px 8px;font-size:12px}
+.gate-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.65}
+.gate-list li{display:flex;gap:6px}
+.gate-list .m{flex:0 0 auto}
+.gate-list .hard{color:var(--up)}
+.gate-list .soft{color:var(--mist-400)}
+.gate-list .soft .m{color:var(--gold)}
+.gate-none{font-size:12.5px;color:var(--mist-700)}
+
+.param-list{margin:0;display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.param-list .row{display:flex;justify-content:space-between}
+.param-list dt{color:var(--mist-500)} .param-list dd{margin:0;color:var(--mist-200)}
+.caveat{margin:10px 0 0;border:1px solid var(--ink-700);background:rgba(14,21,32,.6);border-radius:8px;padding:8px 12px;font-size:11.5px;line-height:1.7;color:var(--mist-500)}
+.updated{margin:10px 0 0;display:flex;align-items:center;gap:4px;font-size:11px;color:var(--mist-700)}
+
+.empty-card{text-align:center;padding:40px 20px}
+.empty-card svg{margin:0 auto 10px;display:block;color:var(--mist-700)}
+.empty-t{margin:0;font-size:14px;color:var(--mist-300)}
+.empty-s{margin:4px auto 0;max-width:440px;font-size:12.5px;line-height:1.7;color:var(--mist-700)}
+.tip-bars{margin:16px 0;border:1px dashed var(--ink-700);border-radius:12px;padding:16px;text-align:center;font-size:12.5px;color:var(--mist-700)}
+
+.disclaimer{margin-top:20px;border:1px solid var(--ink-700);background:var(--ink-900);border-radius:12px;padding:12px 16px;font-size:11.5px;line-height:1.7;color:var(--mist-700)}
 </style>
 </head>
 <body>
-<header>
-  <div class="bar">
-    <div class="logo">估值<span>助手</span></div>
-    <div class="tagline">A股企业评价与估值 · 本地运行</div>
-    <div class="search">
-      <span class="ico">⌕</span>
-      <input id="q" type="text" autocomplete="off" spellcheck="false"
-             placeholder="输入代码 / 名称 / 拼音首字母，如 600519、茅台、gzmt">
-      <button id="go">计算</button>
-      <div class="sug" id="sug"></div>
-    </div>
-  </div>
-</header>
+<div class="page">
 
-<main class="wrap">
-  <div id="stage">
-    <div class="empty">
-      <h2>输入一只股票，算出它值多少钱</h2>
-      <p>五层漏斗：排雷 → 六维打分 → 企业画像 → 主辅模型估值 → 期望收益与仓位</p>
-      <p style="color:var(--text-3);font-size:12px">全部取自公开免费数据源，结果仅供研究参考，不构成投资建议</p>
-      <div class="hint-chips">
-        <span class="chip" data-c="600519">贵州茅台</span>
-        <span class="chip" data-c="000858">五粮液</span>
-        <span class="chip" data-c="601668">中国建筑</span>
-        <span class="chip" data-c="300750">宁德时代</span>
-        <span class="chip" data-c="600036">招商银行</span>
-        <span class="chip" data-c="688981">中芯国际</span>
-      </div>
+  <header class="ph">
+    <div>
+      <p class="ph-eyebrow">量化估值</p>
+      <h1 class="ph-title">股票估值实验室</h1>
+      <p class="ph-desc">批量输入股票代码或名称（最多 <span id="max-batch">10</span> 只），实时跑完整估值管线，一次拿到六维评价、合理区间与决策结论。</p>
+    </div>
+    <span class="version-badge">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/></svg>
+      模型版本 v2.9 · 稳定版
+    </span>
+  </header>
+
+  <section class="card">
+    <div class="input-wrap">
+      <svg class="input-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <textarea id="q" rows="2" spellcheck="false"
+        placeholder="600519, gzmt, 伊利股份…　（代码 / 名称 / 拼音首字母，逗号或空格分隔）"></textarea>
+    </div>
+
+    <div class="sug hidden" id="sug"></div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-primary" id="run" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/></svg>
+        <span id="run-text">开始计算</span>
+      </button>
+      <button type="button" class="btn btn-ghost btn-stop hidden" id="stop">停止</button>
+      <button type="button" class="btn btn-ghost hidden" id="clear">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        清空
+      </button>
+      <span class="examples">示例
+        <button type="button" data-ex="600519">600519</button>
+        <button type="button" data-ex="000651">000651</button>
+        <button type="button" data-ex="伊利股份">伊利股份</button>
+      </span>
+    </div>
+
+    <div id="progress" class="hidden">
+      <div class="progress-track"><div class="progress-fill" id="bar" style="width:0%"></div></div>
+      <p class="progress-text" id="progress-text"></p>
+    </div>
+    <p class="hint" id="hint">支持代码、中文名、拼音首字母（如 gzmt → 贵州茅台），输入时会给出匹配候选。每只约 3–6 秒；Ctrl / ⌘ + Enter 直接开始。</p>
+  </section>
+
+  <div class="risk-notice">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <div>
+      <p class="risk-title">程序化估值有失真风险</p>
+      <p class="risk-body">模型基于公开财报与人工标定参数运行，无法识别财务造假、突发事件、行业逻辑变化与政策冲击；同一家公司在不同参数下可能得出相差数倍的结论。页面上的价位精确到分，但精度不等于准确度——请把它当作学习估值方法论的教具，而不是交易依据。</p>
     </div>
   </div>
-  <div class="foot">
-    数据来源：腾讯行情 / 东方财富 / 新浪三表　·　所有计算在本机完成，不上传任何数据<br>
-    按 <span class="kbd">Enter</span> 直接计算选中项，<span class="kbd">↑</span><span class="kbd">↓</span> 切换候选
+
+  <div id="failed"></div>
+  <div id="results"></div>
+  <div id="detail"></div>
+
+  <div class="card empty-card" id="empty">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/></svg>
+    <p class="empty-t">输入一组股票代码或名称，开始批量计算</p>
+    <p class="empty-s">支持 6 位代码与中文名称混输。计算结果仅在当前页面，不写入任何数据库——这里的目标是一次算完一批，而不是维护一张样本清单。</p>
   </div>
-</main>
+
+  <p class="disclaimer">免责声明：本页为量化估值模型的程序化输出（六维评价、经营模式判定、戈登/RIM/EV-EBITDA 多模型估值与情景期望收益），模型参数与行业倍数含人工标定成分，结论仅用于学习与方法论研究，不构成任何投资建议。</p>
+
+</div>
 
 <script>
+"use strict";
 const $ = s => document.querySelector(s);
-const stage = $('#stage'), inp = $('#q'), sugBox = $('#sug'), goBtn = $('#go');
+const MAX_BATCH = 10;
 
-const DIMS = [
-  ['profit','盈利能力',25],['cashflow','现金流质量',20],['growth','成长能力',15],
-  ['solvency','偿债能力',15],['operation','营运能力',15],['asset','资产质量',10]
-];
-
-let items = [], sel = -1, timer = null, curCode = null, tick = null;
+let rows = [], failed = [], running = false, done = 0, total = 0;
+let expanded = null, abort = false, sugSeq = 0, sugTimer = null;
+const sugCache = new Map();
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const num = (v, d = 2) => (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(d);
-const money = v => v == null || isNaN(v) ? '—' : (Math.abs(v) >= 100 ? Math.round(v) : Number(v).toFixed(2));
-const pct = (v, d = 1) => (v === null || v === undefined || isNaN(v)) ? '—' : (v * 100).toFixed(d) + '%';
+const num = (v, d = 2) => (v === null || v === undefined || !Number.isFinite(v)) ? '—' : Number(v).toFixed(d);
+const pct = (v, d = 1) => (v === null || v === undefined || !Number.isFinite(v)) ? '—' : (v * 100).toFixed(d) + '%';
 
-const RISK = {
-  '不通过': ['b-fail', '硬性排除'],
-  '高危':   ['b-high', '减分项偏多'],
-  '关注':   ['b-watch','有需要留意的点'],
-  '正常':   ['b-pass', '未发现问题'],
-};
+function verdictLabel(v, rejected, avoid) {
+  if (rejected) return '淘汰';
+  if (avoid) return '回避';
+  const s = v ?? '';
+  if (/观察|暂缓/.test(s)) return '观望';
+  if (/接近买点/.test(s)) return '接近合理';
+  if (/建仓|小仓试探/.test(s)) return '计算合理';
+  if (/不追|合理区间内|持有/.test(s)) return '观望';
+  if (/不出手/.test(s)) return '不符合条件';
+  const head = s.split('（')[0];
+  return head || '—';
+}
+function verdictClass(v, rejected, avoid) {
+  if (rejected || avoid) return 'v-down';
+  const l = verdictLabel(v, rejected, avoid);
+  if (/计算合理|接近合理/.test(l)) return 'v-up';
+  if (/回避|无法定价|不符合条件/.test(l)) return 'v-down';
+  if (/观望/.test(l)) return 'v-gold';
+  return 'v-plain';
+}
+const gradeClass = g => ({ A: 'gA', B: 'gB', C: 'gC', D: 'gD' }[g] || 'gC');
 
-const VERDICT_COLOR = v => {
-  if (!v) return 'var(--text-3)';
-  if (v.includes('分批') || v.includes('建仓') || v.includes('接近')) return 'var(--green)';
-  if (v.includes('不符合') || v.includes('回避') || v.includes('淘汰')) return 'var(--red)';
-  if (v.includes('不追') || v.includes('观望')) return 'var(--amber)';
-  return 'var(--text-2)';
-};
+function parseInput(text) {
+  const parts = String(text).split(/[,，、\s\n\r\t]+/).map(x => x.trim()).filter(Boolean);
+  const seen = new Set(), out = [];
+  for (const p of parts) {
+    const k = p.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(p);
+    if (out.length >= MAX_BATCH) break;
+  }
+  return out;
+}
 
-inp.addEventListener('input', () => {
-  const q = inp.value.trim();
-  clearTimeout(timer);
-  if (q.length < 1) { hideSug(); return; }
-  timer = setTimeout(async () => {
+const qEl = $('#q'), sugEl = $('#sug');
+
+async function searchStocks(q) {
+  if (sugCache.has(q)) return sugCache.get(q);
+  const r = await fetch('/api/search?q=' + encodeURIComponent(q));
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || '搜索失败');
+  sugCache.set(q, d.items || []);
+  return d.items || [];
+}
+
+function currentToken(text) {
+  const m = /([^\s,，、]+)$/.exec(text);
+  return m ? m[1] : '';
+}
+
+function renderSug(items) {
+  if (!items.length) { sugEl.classList.add('hidden'); sugEl.innerHTML = ''; return; }
+  sugEl.innerHTML = `<span class="sug-label">匹配</span>` + items.map(it =>
+    `<button type="button" class="sug-item" data-code="${esc(it.code)}">${esc(it.name)}<span class="c">${esc(it.code)}</span></button>`
+  ).join('');
+  sugEl.classList.remove('hidden');
+}
+
+sugEl.addEventListener('click', e => {
+  const b = e.target.closest('.sug-item');
+  if (!b) return;
+  const text = qEl.value;
+  const tok = currentToken(text);
+  if (tok) qEl.value = text.slice(0, text.length - tok.length) + b.dataset.code + ', ';
+  else {
+    const head = text.replace(/[,，、\s]+$/, '');
+    qEl.value = head + (head ? ', ' : '') + b.dataset.code + ', ';
+  }
+  sugEl.classList.add('hidden');
+  qEl.focus();
+  syncRunButton();
+});
+
+qEl.addEventListener('input', () => {
+  syncRunButton();
+  if (running) { sugEl.classList.add('hidden'); return; }
+  const tok = currentToken(qEl.value);
+  clearTimeout(sugTimer);
+  if (!tok || /^\d{6}$/.test(tok) || tok.length > 12) { sugEl.classList.add('hidden'); return; }
+  sugTimer = setTimeout(async () => {
+    const my = ++sugSeq;
     try {
-      const r = await fetch('/api/search?q=' + encodeURIComponent(q));
+      const items = await searchStocks(tok);
+      if (my === sugSeq) renderSug(items.slice(0, 6));
+    } catch { if (my === sugSeq) sugEl.classList.add('hidden'); }
+  }, 320);
+});
+
+qEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); }
+});
+
+function syncRunButton() {
+  const items = parseInput(qEl.value);
+  $('#run').disabled = running || !items.length;
+  $('#run-text').textContent = running
+    ? `计算中 ${done}/${total}`
+    : items.length ? `开始计算（${items.length} 只）` : '开始计算';
+  $('#clear').classList.toggle('hidden', running || (!qEl.value && !rows.length));
+  $('#stop').classList.toggle('hidden', !running);
+  $('#empty').classList.toggle('hidden', !!(rows.length || failed.length || running));
+}
+
+async function run() {
+  const items = parseInput(qEl.value);
+  if (!items.length || running) return;
+  abort = false; running = true;
+  rows = []; failed = []; expanded = null; done = 0; total = items.length;
+
+  $('#results').innerHTML = ''; $('#detail').innerHTML = ''; $('#failed').innerHTML = '';
+  $('#progress').classList.remove('hidden');
+  $('#hint').classList.add('hidden');
+  qEl.disabled = true;
+
+  for (let i = 0; i < items.length; i++) {
+    if (abort) break;
+    const q = items[i];
+    $('#progress-text').textContent = `正在计算 ${i + 1}/${total}：${q}　·　每只约 3–6 秒`;
+    $('#bar').style.width = `${Math.round((i / total) * 100)}%`;
+    syncRunButton();
+    try {
+      let code = q;
+      if (!/^\d{6}$/.test(q)) {
+        const found = await searchStocks(q);
+        if (!found.length) throw new Error('未找到匹配的股票');
+        code = found[0].code;
+      }
+      const r = await fetch('/api/valuate?code=' + encodeURIComponent(code));
       const d = await r.json();
-      items = d.items || []; sel = items.length ? 0 : -1; renderSug();
-    } catch { hideSug(); }
-  }, 220);
-});
-
-function renderSug() {
-  if (!items.length) { hideSug(); return; }
-  sugBox.innerHTML = items.map((it, i) =>
-    `<div class="sug-item${i === sel ? ' sel' : ''}" data-i="${i}">
-       <span class="c">${esc(it.code)}</span>
-       <span>${esc(it.name)}</span>
-       <span class="m">${esc(it.market || '')}</span>
-     </div>`).join('');
-  sugBox.classList.add('on');
-}
-function hideSug() { sugBox.classList.remove('on'); items = []; sel = -1; }
-
-sugBox.addEventListener('mousedown', e => {
-  const el = e.target.closest('.sug-item');
-  if (el) { const it = items[+el.dataset.i]; inp.value = it.name; hideSug(); load(it.code); }
-});
-
-inp.addEventListener('keydown', e => {
-  if (e.key === 'ArrowDown') { e.preventDefault(); if (items.length) { sel = (sel + 1) % items.length; renderSug(); } }
-  else if (e.key === 'ArrowUp') { e.preventDefault(); if (items.length) { sel = (sel - 1 + items.length) % items.length; renderSug(); } }
-  else if (e.key === 'Enter') {
-    e.preventDefault();
-    if (items.length && sel >= 0) { const it = items[sel]; inp.value = it.name; hideSug(); load(it.code); }
-    else submitRaw();
-  } else if (e.key === 'Escape') hideSug();
-});
-
-goBtn.addEventListener('click', () => {
-  if (items.length && sel >= 0) { const it = items[sel]; inp.value = it.name; hideSug(); load(it.code); }
-  else submitRaw();
-});
-
-async function submitRaw() {
-  const q = inp.value.trim();
-  if (!q) return;
-  if (/^\d{6}$/.test(q)) return load(q);
-  try {
-    const r = await fetch('/api/search?q=' + encodeURIComponent(q));
-    const d = await r.json();
-    if (d.items && d.items.length) { inp.value = d.items[0].name; load(d.items[0].code); }
-    else showErr('没找到匹配的股票，换个关键词或直接输入 6 位代码试试。');
-  } catch (e) { showErr('搜索失败：' + e.message); }
-}
-
-document.querySelectorAll('.chip').forEach(c =>
-  c.addEventListener('click', () => load(c.dataset.c)));
-
-function showErr(msg) {
-  stage.innerHTML = `<div class="card"><div class="pad"><div class="err">${esc(msg)}</div></div></div>`;
-}
-
-async function load(code) {
-  curCode = code;
-  history.replaceState(null, '', '#' + code);
-  const t0 = Date.now();
-  stage.innerHTML = `<div class="card"><div class="loading">
-    <div class="spin"></div>
-    <div class="t">正在获取数据并计算…</div>
-    <div class="s">首次计算约 10–20 秒（要取行情、五年财报、三张表、同业样本）<br>
-      已用 <span class="secs"><span id="tick">0</span> 秒</span></div>
-  </div></div>`;
-  clearInterval(tick);
-  tick = setInterval(() => { const el = $('#tick'); if (el) el.textContent = ((Date.now() - t0) / 1000).toFixed(0); }, 200);
-
-  try {
-    const r = await fetch('/api/valuate?code=' + encodeURIComponent(code));
-    const d = await r.json();
-    clearInterval(tick);
-    if (!d.ok) { showErr(d.error || '计算失败'); return; }
-    render(d.row);
-  } catch (e) {
-    clearInterval(tick);
-    showErr('请求失败：' + e.message + '（请确认网络可访问行情数据源）');
+      if (!d.ok) throw new Error(d.error || '计算失败');
+      rows.push(d.row);
+      renderAll();
+    } catch (e) {
+      failed.push({ code: q, msg: e && e.message ? e.message : '计算失败' });
+      renderFailed();
+    } finally {
+      done = i + 1;
+      $('#bar').style.width = `${Math.round((done / total) * 100)}%`;
+    }
   }
+
+  running = false;
+  qEl.disabled = false;
+  $('#progress').classList.add('hidden');
+  $('#hint').classList.remove('hidden');
+  $('#hint').textContent = abort
+    ? `已停止，完成 ${rows.length} 只。`
+    : `计算完成：成功 ${rows.length} 只${failed.length ? `，失败 ${failed.length} 只` : ''}。点击任意行展开全貌。`;
+  renderAll();
+  syncRunButton();
 }
 
-function render(r) {
-  const g = r.gate || {};
-  const rejected = r.rejected, avoid = r.avoid;
-  const [bcls, bnote] = RISK[g.risk_level] || ['b-pass', ''];
-  const isBadRisk = g.risk_level === '不通过';
-
-  let h = `<div class="card head">
-    <div>
-      <h1>${esc(r.name)} <span style="font-size:14px;color:var(--text-3);font-weight:500">${esc(r.code)}</span></h1>
-      <div class="sub">
-        <span>${esc(r.industry || '—')}</span>
-        ${r.mode ? `<span class="pill">${esc(r.mode)}</span>` : ''}
-        ${r.stage ? `<span class="pill">${esc(r.stage)}${r.substage ? ' · ' + esc(r.substage) : ''}</span>` : ''}
-        ${r._cached ? '<span class="pill">缓存结果</span>' : `<span class="pill">耗时 ${num(r._elapsed, 1)}s</span>`}
-      </div>
-    </div>
-    <div class="price">
-      <div class="n">${num(r.price)}</div>
-      <div class="d">PE ${num(r.pe)}　PB ${num(r.pb)}</div>
-    </div>
-  </div>`;
-
-  const hard = g.hard || [], soft = g.soft || [];
-  let flags = '';
-  if (hard.length) flags += hard.map(x => `<div class="flag hard"><span class="k">否决</span><span class="txt">${esc(x)}</span></div>`).join('');
-  if (soft.length) flags += soft.map(x => `<div class="flag soft"><span class="k">减分</span><span class="txt">${esc(x)}</span></div>`).join('');
-  if (!hard.length && !soft.length) flags = `<div class="ok-line">✓ 硬否决 0 项、减分 0 项，未发现明显财务风险</div>`;
-
-  const gateCard = `<div class="card pad">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
-      <h2 class="sec-h" style="margin:0">一、排雷</h2>
-      <span class="badge ${bcls}" style="margin-left:auto">${esc(g.risk_level || '—')}${bnote ? ' · ' + bnote : ''}</span>
-    </div>
-    ${rejected || avoid ? `<div class="caveat" style="margin:8px 0 4px">${
-      esc(rejected ? '硬否决命中即终止评估，不进入六维与估值，因此没有分数与价格。'
-                   : (r.avoid_reason || '该行业不适用本估值模型。'))}</div>` : ''}
-    ${flags}
-  </div>`;
-
-  const dims = r.dims || {};
-  const sc = r.score_total;
-  const scoreCard = `<div class="card pad">
-    <h2 class="sec-h">二、六维评分</h2>
-    <div class="radar-box">
-      ${radar(dims)}
-      <div class="score-big" style="margin-top:10px">${num(sc, 1)}<em>${esc(r.grade || '')} 级</em></div>
-      <div class="dims">
-        ${DIMS.map(([k, label, w]) => {
-          const v = dims[k];
-          return `<div class="dim">
-            <span>${label}<span style="color:var(--text-3);font-size:10px"> ${w}%</span></span>
-            <span class="pbar"><i style="width:${v == null ? 0 : Math.max(0, Math.min(100, v))}%"></i></span>
-            <span class="v">${v == null ? '—' : num(v, 0)}</span>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-  </div>`;
-
-  stage.innerHTML = h + `<div class="grid">
-      <div class="col">${gateCard}${valCard(r)}</div>
-      <div class="col">${scoreCard}</div>
-    </div>`;
-
-  if (rejected || avoid) {
-    const right = stage.querySelectorAll('.col')[1];
-    if (right) right.innerHTML = `<div class="card pad">
-      <h2 class="sec-h">二、六维评分</h2>
-      <div style="padding:54px 10px;text-align:center;color:var(--text-3)">
-        <div style="font-size:28px;line-height:1;margin-bottom:14px;opacity:.55">⊘</div>
-        <div style="font-size:13px;line-height:1.9">
-          ${rejected ? '硬否决已终止评估' : '该行业不适用本模型'}<br>不产出六维分数与估值
-        </div>
-      </div>
-    </div>`;
-  }
-}
-
-function valCard(r) {
-  const g = r.gate || {};
-  if (r.rejected || r.avoid) return '';
-  const has = r.fair_low != null && r.fair_high != null;
-  if (!has) {
-    return `<div class="card pad">
-      <h2 class="sec-h">三、估值与决策</h2>
-      <div class="verdict-row" style="border-top:0;margin-top:0;padding-top:0">
-        <span class="verdict-main" style="color:var(--text-3)">无法定价</span>
-        <span class="verdict-sub">${esc(r.caveat || '主模型在当前数据下失效（如持续亏损、净资产为负），不输出区间与买点。')}</span>
-      </div>
-    </div>`;
-  }
-  const v = String(r.verdict || '');
-  const m = v.match(/^([^（(]+)[（(]?(.*?)[）)]?$/);
-  const main = (m ? m[1] : v).trim();
-  const sub = m && m[2] ? m[2].replace(/[）)]$/, '') : '';
-
-  return `<div class="card pad">
-    <h2 class="sec-h">三、估值与决策</h2>
-    <div class="val-grid">
-      <div class="val-cell"><div class="l">合理区间</div>
-        <div class="v">${money(r.fair_low)}<small>–</small>${money(r.fair_high)}</div></div>
-      <div class="val-cell"><div class="l">理论安全边际</div><div class="v">${money(r.buy)}</div></div>
-      <div class="val-cell"><div class="l">期望年化收益</div>
-        <div class="v" style="color:${(r.e_return || 0) >= 0 ? 'var(--red)' : 'var(--green)'}">${pct(r.e_return)}</div></div>
-      <div class="val-cell"><div class="l">主模型</div><div class="v" style="font-size:15px">${esc(r.primary_model || '—')}</div></div>
-    </div>
-    <div class="verdict-row">
-      <span class="verdict-main" style="color:${VERDICT_COLOR(v)}">${esc(main)}</span>
-      ${sub ? `<span class="verdict-sub">${esc(sub)}</span>` : ''}
-      <span class="verdict-sub" style="margin-left:auto">${esc(r.market_state || '')}${r.market_state ? ' · ' : ''}现价 ${num(r.price)}</span>
-    </div>
-    ${r.caveat ? `<div class="caveat">${esc(r.caveat)}</div>` : ''}
-  </div>`;
-}
-
-function radar(dims) {
-  const cx = 130, cy = 122, R = 84, n = DIMS.length;
-  const pt = (i, rr) => {
-    const a = -Math.PI / 2 + i * 2 * Math.PI / n;
-    return [cx + rr * Math.cos(a), cy + rr * Math.sin(a)];
-  };
-  let rings = '';
-  [0.25, 0.5, 0.75, 1].forEach(k => {
-    const p = DIMS.map((_, i) => pt(i, R * k).join(',')).join(' ');
-    rings += `<polygon points="${p}" fill="none" stroke="#e9ecf2" stroke-width="1"/>`;
+$('#run').addEventListener('click', run);
+$('#stop').addEventListener('click', () => { abort = true; });
+$('#clear').addEventListener('click', () => {
+  abort = true; qEl.value = ''; rows = []; failed = []; expanded = null; done = 0; total = 0;
+  $('#results').innerHTML = ''; $('#detail').innerHTML = ''; $('#failed').innerHTML = '';
+  sugEl.classList.add('hidden');
+  $('#hint').textContent = '支持代码、中文名、拼音首字母（如 gzmt → 贵州茅台），输入时会给出匹配候选。每只约 3–6 秒；Ctrl / ⌘ + Enter 直接开始。';
+  syncRunButton();
+});
+document.querySelectorAll('.examples button').forEach(b => {
+  b.addEventListener('click', () => {
+    qEl.value = qEl.value ? `${qEl.value}, ${b.dataset.ex}` : b.dataset.ex;
+    syncRunButton(); qEl.focus();
   });
-  let spokes = DIMS.map((_, i) => {
-    const [x, y] = pt(i, R);
-    return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e9ecf2" stroke-width="1"/>`;
+});
+
+function renderAll() { renderTable(); renderDetail(); syncRunButton(); }
+
+function premium(row) {
+  return (row.fair_high && row.price > 0) ? row.price / row.fair_high - 1 : null;
+}
+
+function renderTable() {
+  const box = $('#results');
+  if (!rows.length) { box.innerHTML = ''; return; }
+
+  const head = `<div class="res-head">
+    <h2 class="res-title">计算结果<span class="res-sub">共 ${rows.length} 只 · 点击任意行展开全貌</span></h2>
+    ${running ? `<span class="res-note">还有 ${total - done} 只待算…</span>` : ''}
+  </div>`;
+
+  const trs = rows.map((r, i) => {
+    const prem = premium(r);
+    const open = expanded === r.code;
+    return `<tr data-code="${esc(r.code)}" class="${open ? 'open' : ''}">
+      <td class="c-idx">${open
+        ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d8ab4a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`
+        : (i + 1)}</td>
+      <td><span class="nm">${esc(r.name)}</span><span class="cd">${esc(r.code)}</span></td>
+      <td class="mode">${esc(r.mode ?? '—')}<span style="color:var(--mist-700)"> × </span>${esc(r.stage ?? '—')}${r.substage ? `<span class="sub">（${esc(r.substage)}）</span>` : ''}</td>
+      <td class="c-num">${r.score_total !== null && r.score_total !== undefined
+        ? `<span class="score">${Number(r.score_total).toFixed(1)}</span><span class="grade ${gradeClass(r.grade)}">${esc(r.grade ?? '')}</span>`
+        : '<span style="color:var(--mist-700)">—</span>'}</td>
+      <td><span class="model-tag">${esc(r.primary_model ?? (r.invalid ? '模型失效' : '—'))}</span></td>
+      <td class="c-num" style="font-size:12.5px;font-weight:500;color:var(--mist-200)">
+        ${r.fair_low && r.fair_high ? `${num(r.fair_low)}–${num(r.fair_high)}` : '—'}</td>
+      <td class="c-num"><span class="price">${num(r.price)}</span>${prem !== null
+        ? `<span class="prem ${prem > 0 ? 'up' : 'down'}">${prem > 0 ? '+' : '−'}${Math.abs(prem * 100).toFixed(1)}%</span>` : ''}</td>
+      <td class="c-num"><span class="vtag ${verdictClass(r.verdict, r.rejected, r.avoid)}">${esc(verdictLabel(r.verdict, r.rejected, r.avoid))}</span></td>
+    </tr>`;
   }).join('');
 
-  const pts = DIMS.map(([k], i) => {
-    const v = dims[k] == null ? 0 : Math.max(0, Math.min(100, dims[k]));
-    return pt(i, R * v / 100);
-  });
-  const poly = pts.map(p => p.join(',')).join(' ');
-  const dots = pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.8" fill="#2f5bd7"/>`).join('');
-  const labels = DIMS.map(([, label], i) => {
-    const [x, y] = pt(i, R + 20);
-    const anchor = Math.abs(x - cx) < 6 ? 'middle' : (x > cx ? 'start' : 'end');
-    return `<text x="${x}" y="${y + 4}" text-anchor="${anchor}"
-              font-size="10.5" fill="#8b93a3">${label}</text>`;
+  const cards = rows.map(r => {
+    const prem = premium(r);
+    const open = expanded === r.code;
+    return `<button type="button" class="m-card ${open ? 'open' : ''}" data-code="${esc(r.code)}">
+      <div class="m-row">
+        <span><span class="nm">${esc(r.name)}</span><span class="cd">${esc(r.code)}</span></span>
+        <span class="vtag ${verdictClass(r.verdict, r.rejected, r.avoid)}">${esc(verdictLabel(r.verdict, r.rejected, r.avoid))}</span>
+      </div>
+      <p class="m-meta">${esc(r.mode ?? '—')} × ${esc(r.stage ?? '—')}${r.substage ? `<span class="sub">（${esc(r.substage)}）</span>` : ''}</p>
+      <div class="m-line"><span>六维 ${r.score_total !== null && r.score_total !== undefined
+        ? `<span class="score">${Number(r.score_total).toFixed(1)}</span> ${esc(r.grade ?? '')}` : '—'}</span>
+        <span>${esc(r.primary_model ?? '—')}</span></div>
+      <div class="m-line"><span>区间 <span style="color:var(--mist-200)">${r.fair_low && r.fair_high ? `${num(r.fair_low)}–${num(r.fair_high)}` : '—'}</span></span>
+        <span>现价 <span class="price">${num(r.price)}</span>${prem !== null
+          ? `<span class="prem ${prem > 0 ? 'up' : 'down'}">${prem > 0 ? '+' : '−'}${Math.abs(prem * 100).toFixed(1)}%</span>` : ''}</span></div>
+    </button>`;
   }).join('');
 
-  return `<svg width="260" height="244" viewBox="0 0 260 244">
-    ${rings}${spokes}
-    <polygon points="${poly}" fill="rgba(47,91,215,.14)" stroke="#2f5bd7" stroke-width="1.8" stroke-linejoin="round"/>
-    ${dots}${labels}
-  </svg>`;
+  box.innerHTML = head + `<div class="table-card"><div class="table-scroll">
+      <table><thead><tr>
+        <th style="text-align:center">#</th><th>代码 / 名称</th><th>模式 × 阶段</th>
+        <th style="text-align:right">六维</th><th>主模型</th>
+        <th style="text-align:right">合理区间</th><th style="text-align:right">现价</th>
+        <th style="text-align:right">判定</th>
+      </tr></thead><tbody>${trs}</tbody></table>
+    </div></div><div class="m-list">${cards}</div>`;
+
+  box.querySelectorAll('[data-code]').forEach(el => {
+    el.addEventListener('click', () => expandRow(el.dataset.code));
+  });
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  const h = location.hash.replace('#', '');
-  if (/^\d{6}$/.test(h)) load(h);
-});
-window.addEventListener('hashchange', () => {
-  const h = location.hash.replace('#', '');
-  if (/^\d{6}$/.test(h) && h !== curCode) load(h);
-});
+function renderFailed() {
+  const box = $('#failed');
+  if (!failed.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="card fail-card">
+    <h3 class="fail-title">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      ${failed.length} 只未能计算
+    </h3>
+    <ul class="fail-list">${failed.map(f => `<li><span class="x">✕</span><span><span class="k">${esc(f.code)}</span>：${esc(f.msg)}</span></li>`).join('')}</ul>
+  </div>`;
+}
+
+function expandRow(code) {
+  expanded = (expanded === code) ? null : code;
+  renderAll();
+  if (expanded) {
+    setTimeout(() => {
+      const el = $('#detail');
+      if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 16, behavior: 'smooth' });
+    }, 120);
+  }
+}
+
+const DIM_LABELS = { profit: '盈利', cashflow: '现金流', growth: '成长', solvency: '偿债', operation: '营运', asset: '资产' };
+const TREND_LABELS = {
+  stable:     { label: '趋势稳定', tone: 'border:1px solid var(--ink-600);color:var(--mist-400)' },
+  decelerate: { label: '降速（未转负）', tone: 'border:1px solid rgba(216,171,74,.4);color:var(--gold-soft)' },
+  inflection: { label: '拐点：长期向上、短期掉头', tone: 'border:1px solid rgba(38,163,122,.4);color:var(--down)' },
+  stagnant:   { label: '长期停滞、短期收缩', tone: 'border:1px solid rgba(38,163,122,.4);color:var(--down)' },
+  collapse:   { label: '由盈转亏', tone: 'border:1px solid rgba(38,163,122,.5);background:rgba(38,163,122,.1);color:var(--down)' },
+};
+
+function renderDetail() {
+  const box = $('#detail');
+  const row = rows.find(r => r.code === expanded);
+  if (!row) {
+    box.innerHTML = rows.length
+      ? `<p class="tip-bars">点击上方任意一行，查看该股票的六维、估值区间与排雷详情</p>`
+      : '';
+    return;
+  }
+  box.innerHTML = `
+    <div class="detail-head">
+      <div>
+        <h2 class="detail-title">${esc(row.name)}<span class="detail-code">${esc(row.code)}</span>
+          <span class="vtag ${verdictClass(row.verdict, row.rejected, row.avoid)}">${esc(verdictLabel(row.verdict, row.rejected, row.avoid))}</span>
+          ${row._cached ? '<span class="cache-tag">缓存</span>' : ''}
+        </h2>
+      </div>
+      <button type="button" class="collapse-btn" id="collapse">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        收起
+      </button>
+    </div>
+    <p class="detail-meta">${esc(row.industry ?? '—')}　·　${esc(row.mode ?? '—')} × ${esc(row.stage ?? '—')}${row.substage ? `（${esc(row.substage)}）` : ''}　·　现价 ${num(row.price)}${row._elapsed ? `　·　耗时 ${row._elapsed}s` : ''}</p>
+    <div class="dgrid">
+      <div class="dcol">${rangeCard(row)}${trendCard(row)}</div>
+      <div class="dcol">${dimsCard(row)}${gateCard(row)}${paramCard(row)}</div>
+    </div>`;
+  const c = $('#collapse');
+  if (c) c.addEventListener('click', () => expandRow(row.code));
+}
+
+function rangeCard(row) {
+  if (row.invalid) {
+    return `<div class="card"><h2 class="dcard-title">估值区间</h2>
+      <p style="margin:0;border:1px solid rgba(38,163,122,.3);background:rgba(38,163,122,.05);border-radius:12px;padding:12px 16px;font-size:12.5px;line-height:1.7;color:var(--down)">${esc(row.invalid)}</p></div>`;
+  }
+  const lo = row.fair_low, hi = row.fair_high, target = row.target, buy = row.buy, price = row.price;
+  if (lo === null || hi === null || !(hi > lo)) {
+    return `<div class="card"><h2 class="dcard-title">估值区间</h2>
+      <p style="margin:0;padding:24px 0;text-align:center;font-size:12.5px;color:var(--mist-700)">该样本未进入估值阶段（L1 排雷未通过或行业规则回避）</p></div>`;
+  }
+
+  const pts = [lo, hi, target, buy, price].filter(v => v !== null && v !== undefined && Number.isFinite(v) && v > 0);
+  const dMin = Math.min(...pts), dMax = Math.max(...pts);
+  const span = (dMax - dMin) || 1;
+  const min = dMin - span * 0.12, max = dMax + span * 0.12;
+  const pos = v => Math.min(97, Math.max(3, ((v - min) / (max - min)) * 100));
+
+  const marks = [
+    { label: '理论安全边际', v: buy, line: 'bg-down', text: 'c-down', dash: true },
+    { label: '公平价', v: target, line: 'bg-gold', text: 'c-gold' },
+    { label: '现价', v: price, line: 'bg-up', text: 'c-up' },
+  ].filter(m => Number.isFinite(m.v) && m.v > 0);
+
+  const aboveHigh = price > hi, belowLow = price < lo;
+  const bandW = pos(hi) - pos(lo);
+
+  const marksHtml = marks.map((m, i) => `
+    <div class="ruler-mark" style="left:${pos(m.v)}%">
+      <div class="ruler-line ${m.line} ${m.dash ? 'dash' : ''}"></div>
+      <div class="ruler-label" style="top:${i % 2 === 0 ? 66 : 82}px">
+        <span class="ruler-v ${m.text}">${num(m.v)}</span>
+        <span class="ruler-k">${m.label}</span>
+      </div>
+    </div>`).join('');
+
+  const kv = [
+    { k: '合理区间', v: `${num(lo)} – ${num(hi)}`, cls: 'c-mist' },
+    { k: '公平价', v: num(target), cls: 'c-gold' },
+    { k: '理论安全边际', v: num(buy), cls: 'c-down' },
+    { k: aboveHigh ? '现价（高于上沿）' : belowLow ? '现价（低于下沿）' : '现价（区间内）', v: num(price), cls: aboveHigh ? 'c-up' : belowLow ? 'c-down' : 'c-mist' },
+  ].map(x => `<div><span class="k">${x.k}</span><span class="v ${x.cls}">${x.v}</span></div>`).join('');
+
+  const er = (row.e_return !== null && row.e_return !== undefined)
+    ? `<p class="e-return">三情景期望收益 <span class="serif ${row.e_return >= 0 ? 'c-up' : 'c-down'}">${pct(row.e_return)}</span>（要求回报 ${pct(row.r, 2)}，行情 ${esc(row.market_state ?? '—')}）</p>`
+    : '';
+
+  return `<div class="card">
+    <h2 class="dcard-title">估值区间</h2>
+    <p class="ruler-legend">色带为合理区间；<span class="c-down">绿线理论安全边际</span> ·<span class="c-gold"> 金线公平价</span> ·<span class="c-up"> 红线现价</span></p>
+    <div class="ruler">
+      <div class="ruler-axis"></div>
+      <div class="ruler-band" style="left:${pos(lo)}%;width:${bandW}%"></div>
+      ${marksHtml}
+      <span class="ruler-end l">${num(min, 1)}</span>
+      <span class="ruler-end r">${num(max, 1)}</span>
+    </div>
+    <dl class="kv">${kv}</dl>
+    ${er}
+  </div>`;
+}
+
+function trendCard(row) {
+  const t = row.trend || {};
+  const meta = t.state ? TREND_LABELS[t.state] : null;
+  let main;
+  if (meta) {
+    const l = (t.L !== null && t.L !== undefined && t.S !== null && t.S !== undefined)
+      ? `长期 ${pct(t.L)} / 短期 ${pct(t.S)}　·　` : '';
+    const rebound = (t.rebound && ['inflection', 'stagnant', 'collapse'].includes(t.state)) ? '（最新一期已止跌）' : '';
+    main = `<p class="trend-line"><span class="trend-badge" style="${meta.tone}">${meta.label}</span>${l}${esc(t.note ?? '')}${rebound}</p>`;
+  } else {
+    main = `<p class="trend-line" style="color:var(--mist-700)">暂无趋势判定数据</p>`;
+  }
+
+  let rim = '';
+  if (row.rim && typeof row.rim === 'object' && 'applicable' in row.rim) {
+    rim = `<p class="trend-sub"><span class="k">RIM 对照：</span>${row.rim.applicable
+      ? `隐含 PE ${num(row.rim.pe_implied)}×，合理价 ${num(row.rim.value_mix)} 元（不参与定价，仅作交叉验证）`
+      : `不适用（${esc(row.rim.reason ?? '—')}）`}</p>`;
+  }
+  let ev = '';
+  if (row.ev_ebitda && typeof row.ev_ebitda === 'object' && 'applicable' in row.ev_ebitda) {
+    ev = `<p class="trend-sub"><span class="k">EV/EBITDA：</span>${row.ev_ebitda.applicable
+      ? `EBITDA(TTM) ${num((row.ev_ebitda.ebitda ?? 0) / 1e8, 1)} 亿 × ${num(row.ev_ebitda.mult, 1)}×，${esc(row.ev_ebitda.mult_note ?? '')}`
+      : `不适用（${esc(row.ev_ebitda.reason ?? '—')}）`}</p>`;
+  }
+  const downgrade = row.primary_model === 'EV/EBITDA'
+    ? `<p class="note-gold">本样本因 PE 口径失效（微利 + 重资产）降级为 EV/EBITDA 主模型。行业倍数为人工标定，结论方向可靠、幅度不宜精读。</p>`
+    : '';
+
+  return `<div class="card">
+    <h2 class="dcard-title">趋势拐点与模型对照</h2>
+    ${main}${rim}${ev}${downgrade}
+  </div>`;
+}
+
+function dimsCard(row) {
+  const has = row.score_total !== null && row.score_total !== undefined;
+  const head = `<div class="dim-head">
+      <h2 class="dcard-title" style="margin:0">六维评价</h2>
+      ${has ? `<p class="score-big"><span class="n">${Number(row.score_total).toFixed(1)}</span><span class="g ${gradeClass(row.grade)}">${esc(row.grade ?? '—')}</span></p>` : ''}
+    </div>`;
+
+  const bars = Object.entries(DIM_LABELS).map(([k, label]) => {
+    const raw = row.dims ? row.dims[k] : null;
+    const w = (typeof raw === 'number' && Number.isFinite(raw)) ? Math.max(0, Math.min(100, raw)) : null;
+    const color = w === null ? 'var(--ink-700)'
+      : w >= 80 ? 'var(--up)' : w >= 60 ? 'var(--gold)' : w >= 40 ? 'var(--mist-700)' : 'var(--down)';
+    return `<div class="dim-row">
+      <span class="dim-name">${label}</span>
+      <div class="dim-track"><div class="dim-fill" style="width:${w ?? 0}%;background:${color}"></div></div>
+      <span class="dim-val">${w === null ? '—' : w.toFixed(1)}</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="card">${head}<div>${bars}</div>${!row.dims
+    ? '<p style="margin:0;font-size:12.5px;color:var(--mist-700)">该样本未进入六维评价阶段</p>' : ''}</div>`;
+}
+
+function gateCard(row) {
+  const g = row.gate;
+  let body;
+  if (g) {
+    const tone = (g.risk_level === '高危' || g.risk_level === '不通过')
+      ? 'border:1px solid rgba(38,163,122,.5);background:rgba(38,163,122,.1);color:var(--down)'
+      : g.risk_level === '关注'
+        ? 'border:1px solid rgba(216,171,74,.4);color:var(--gold-soft)'
+        : 'border:1px solid var(--ink-600);color:var(--mist-400)';
+    const items = [
+      ...g.hard.map(x => `<li class="hard"><span class="m">✕</span><span>${esc(x)}</span></li>`),
+      ...g.soft.map(x => `<li class="soft"><span class="m">△</span><span>${esc(x)}</span></li>`),
+    ].join('');
+    body = `<p class="gate-badge" style="${tone}">风险等级：${esc(g.risk_level)}</p>
+      ${items ? `<ul class="gate-list">${items}</ul>` : `<p class="gate-none">未命中任何排雷项</p>`}`;
+  } else {
+    body = `<p class="gate-none">暂无排雷数据</p>`;
+  }
+  return `<div class="card">
+    <h2 class="dcard-title with-ico">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      L1 排雷</h2>
+    ${body}
+  </div>`;
+}
+
+function paramCard(row) {
+  const list = [
+    { k: '主模型', v: row.primary_model ?? '—' },
+    { k: '要求回报 r', v: pct(row.r, 2) },
+    { k: '永续增长 g', v: pct(row.g, 2) },
+    { k: '分红率 b', v: num(row.b, 3) },
+  ].map(x => `<div class="row"><dt>${x.k}</dt><dd>${esc(x.v)}</dd></div>`).join('');
+  const caveat = row.caveat ? `<p class="caveat">${esc(row.caveat)}</p>` : '';
+  const up = (row.e_return !== null && row.e_return !== undefined && row.e_return >= 0);
+  return `<div class="card">
+    <h2 class="dcard-title">模型参数</h2>
+    <dl class="param-list">${list}</dl>
+    ${caveat}
+    <p class="updated">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="${up ? 'var(--up)' : 'var(--down)'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${
+        up ? '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>'
+           : '<polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>'}</svg>
+      数据更新于 ${esc((row.updated_at ?? '').slice(0, 10))}
+    </p>
+  </div>`;
+}
+
+syncRunButton();
+qEl.focus();
 </script>
 </body>
 </html>

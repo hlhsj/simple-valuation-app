@@ -17,6 +17,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('src/stock_value_estimator/config', 'stock_value_estimator/config'),
+        ('data', 'data'),
         ('web', 'web'),
     ],
     hiddenimports=collect_submodules('stock_value_estimator'),
