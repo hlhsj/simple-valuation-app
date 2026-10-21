@@ -1,5 +1,5 @@
 {
-  "version": "2.8",
+  "version": "3.0",
   "erp": {
     "产品型": 0.06,
     "运营型": 0.08,
@@ -76,6 +76,12 @@
     "gap": 0.2,
     "min_abs_yi": 1.0,
     "min_rev_ratio": 0.05
+  },
+  "pe_low_b": {
+    "b_threshold": 0.3,
+    "dividend_yield_cap": 0.015,
+    "rim_discount": 0.7,
+    "deviation_warn": 2.0
   },
   "mktcap": {
     "small_yi": 50

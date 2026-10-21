@@ -7,3 +7,6 @@ dist/
 venv/
 .env
 .DS_Store
+
+# A/B 与回归脚本的临时输出
+scripts/output/

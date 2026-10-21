@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs'
 const _pw = await import(process.env.PW ?? 'file:///F:/AI/WorkBuddy/sc/node_modules/playwright-core/index.js')
 const chromium = _pw.chromium ?? _pw.default?.chromium
-const OUT = 'F:/AI/WorkBuddy/stock-valuation-app/shots/'
+const OUT = 'F:/AI/WorkBuddy/simple-valuation-app/shots/'
 mkdirSync(OUT, { recursive: true })
 
 const b = await chromium.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true })
@@ -19,7 +19,7 @@ await p.waitForSelector('.sug-item', { timeout: 20000 })
 console.log('联想首项:', (await p.textContent('.sug-item')).trim())
 await p.screenshot({ path: OUT + 'v29-02-suggest.png' })
 
-await p.fill('#q', '600519, 000651, 伊利股份')
+await p.fill('#q', '600519, 688041, 浪潮信息')
 await p.waitForTimeout(200)
 console.log('按钮文案:', (await p.textContent('#run-text')).trim())
 await p.screenshot({ path: OUT + 'v29-03-filled.png' })
@@ -42,7 +42,7 @@ const t = await p.textContent('body')
 const checks = {
   '无全局导航栏': !(await p.$('nav')),
   '页面标题': t.includes('股票估值实验室'),
-  'v2.9 稳定版徽章': t.includes('v2.9') && t.includes('稳定版'),
+  'v3.0 徽章': t.includes('v3.0'),
   '失真风险提示': t.includes('程序化估值有失真风险'),
   '结果表': !!await p.$('tbody tr'),
   '判定已映射': /计算合理|接近合理|观望|不符合条件|淘汰|回避/.test(t),

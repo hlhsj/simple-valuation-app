@@ -47,19 +47,23 @@ def _search_eastmoney(q: str, count: int = 8) -> list[dict]:
     req = urllib.request.Request(url, headers={"User-Agent": _UA,
                                                "Referer": "https://www.eastmoney.com/"})
     raw = urllib.request.urlopen(req, timeout=10, context=_CTX).read().decode("utf-8", "ignore")
-    data = json.loads(raw)
+    data = json.loads(raw)          # 被网关拦成 HTML 时抛异常 → 触发腾讯兜底
     items = (data.get("QuotationCodeTable") or {}).get("Data") or []
     out = []
     for it in items:
         code, name = it.get("Code"), it.get("Name")
         if not code or not name or len(code) != 6 or not code.isdigit():
             continue
-        if it.get("SecurityTypeName") not in ("沪A", "深A", "京A"):
+        # 科创板必须单列：东财把 688 开头的 SecurityTypeName 标成「科创板」，
+        # 漏掉它会导致海光信息（688041）这类股票搜不到。
+        if it.get("SecurityTypeName") not in ("沪A", "深A", "京A", "科创板"):
             continue
-        out.append({"code": code, "name": name, "market": it.get("SecurityTypeName")})
+        out.append({"code": code, "name": name,
+                    "market": it.get("SecurityTypeName")})
     return out[:count]
 
 def _search_tencent(q: str, count: int = 8) -> list[dict]:
+    """腾讯 smartbox 兜底：返回 `v_hint="sh~600519~\u8d35...~gzmt~GP-A^..."`。"""
     url = f"https://smartbox.gtimg.cn/s3/?v=2&q={urllib.parse.quote(q)}&t=all"
     req = urllib.request.Request(url, headers={"User-Agent": _UA})
     raw = urllib.request.urlopen(req, timeout=8, context=_CTX).read().decode("utf-8", "ignore")
@@ -69,17 +73,19 @@ def _search_tencent(q: str, count: int = 8) -> list[dict]:
     out = []
     for chunk in m.group(1).split("^"):
         parts = chunk.split("~")
-        if len(parts) < 5 or parts[4] != "GP-A":
+        # 科创板在腾讯口径里是 GP-A-KCB，用 == "GP-A" 会把 688 开头全部滤掉
+        if len(parts) < 5 or not parts[4].startswith("GP-A"):
             continue
-        mkt, code, name_esc = parts[0], parts[1], parts[2]
+        mkt, code, name_esc, stype = parts[0], parts[1], parts[2], parts[4]
         if not (len(code) == 6 and code.isdigit()):
             continue
         try:
-            name = json.loads(f'"{name_esc}"')
-        except Exception:
+            name = json.loads(f'"{name_esc}"')       # 解 \uXXXX 转义
+        except Exception:                            # noqa: BLE001
             name = name_esc
-        out.append({"code": code, "name": name,
-                    "market": {"sh": "沪A", "sz": "深A", "bj": "京A"}.get(mkt, mkt)})
+        label = ("科创板" if "KCB" in stype
+                 else {"sh": "沪A", "sz": "深A", "bj": "京A"}.get(mkt, mkt))
+        out.append({"code": code, "name": name, "market": label})
     return out[:count]
 
 def search(q: str, count: int = 8) -> list[dict]:

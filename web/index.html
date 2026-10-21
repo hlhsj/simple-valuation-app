@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>股票估值实验室 · v2.9 稳定版</title>
+<title>股票估值实验室 · v3.0</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23d8ab4a'/%3E%3Cpath d='M9 21l4-6 3 3 6-8' stroke='%23060910' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
 
@@ -255,7 +255,7 @@ tbody tr.open{background:rgba(14,21,32,.6)}
     </div>
     <span class="version-badge">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/></svg>
-      模型版本 v2.9 · 稳定版
+      模型版本 v3.0
     </span>
   </header>
 
@@ -772,12 +772,20 @@ function gateCard(row) {
   </div>`;
 }
 
+/** 分红率展示：低分红企业已按「留存再投资」口径修正时，标出实际采用值 */
+function bText(row) {
+  const b = row.b, bu = row.b_used;
+  if (b == null) return '—';
+  if (bu != null && Math.abs(bu - b) > 0.001) return `${num(b, 3)} → 按 ${num(bu, 3)} 计`;
+  return num(b, 3);
+}
+
 function paramCard(row) {
   const list = [
     { k: '主模型', v: row.primary_model ?? '—' },
     { k: '要求回报 r', v: pct(row.r, 2) },
     { k: '永续增长 g', v: pct(row.g, 2) },
-    { k: '分红率 b', v: num(row.b, 3) },
+    { k: '分红率 b', v: bText(row) },
   ].map(x => `<div class="row"><dt>${x.k}</dt><dd>${esc(x.v)}</dd></div>`).join('');
   const caveat = row.caveat ? `<p class="caveat">${esc(row.caveat)}</p>` : '';
   const up = (row.e_return !== null && row.e_return !== undefined && row.e_return >= 0);

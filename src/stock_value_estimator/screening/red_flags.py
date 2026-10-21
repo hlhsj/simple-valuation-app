@@ -328,6 +328,58 @@ def ar_inventory_growth(bs_rows: dict[str, list[str]] | None,
     out["gap"] = worst[1]["gap"] if worst[1] else None
     return out
 
+# 累计报告期 → 上一期累计（用于还原单季）；Q1 没有上一期
+_QUARTER_PREV = {"0630": "0331", "0930": "0630", "1231": "0930"}
+_QUARTER_LABEL = {"0331": "Q1", "0630": "Q2", "0930": "Q3", "1231": "Q4"}
+
+def quarter_yoy(periods: list[dict[str, Any]] | None) -> dict[str, Any]:
+    """最近一个**单季度**的营收 / 归母同比，供 S10 用单季口径（2026-10-22 新增）。
+
+    为什么不能复用 `_split_quarters`
+        它要求一年四季齐全（Q1/H1/Q3/FY），对**当年**（只有一、中、三季报）整年跳过，
+        于是 S10 只能退化为累计口径——而「前三季很好、单季转差」恰恰是市场先反应的情形。
+        实测：宁德时代 2026Q3，累计营收 +56.2%/归母 +31.6%（不触发 S10），
+        单季营收 +58.6%/归母 +14.5%，差距 44pp；三季报发布当晚到次日，股价 −12%。
+
+    算法（F10 是累计数，必须做差）
+        Q1 = 一季报；Q2 = 中报 − 一季报；Q3 = 三季报 − 中报；Q4 = 年报 − 三季报
+        同比 = 本期单季 ÷ 上年同一单季 − 1；上年同季 ≤ 0 或缺失 → None
+    """
+    vals: dict[str, dict[str, Any]] = {}
+    for p in periods or []:
+        d = (p.get("REPORT_DATE") or "")[:10]
+        if len(d) >= 10:
+            vals[d[:4] + d[5:7] + d[8:10]] = p
+
+    def _single(year: str, mmdd: str, field: str) -> float | None:
+        cur = vals.get(f"{year}{mmdd}")
+        if cur is None or not isinstance(cur.get(field), (int, float)):
+            return None
+        prev = _QUARTER_PREV.get(mmdd)
+        if prev is None:                      # Q1 本身就是单季
+            return float(cur[field])
+        base = vals.get(f"{year}{prev}")
+        if base is None or not isinstance(base.get(field), (int, float)):
+            return None
+        return float(cur[field]) - float(base[field])
+
+    # 年报的 Q4 要等次年才完整，对「最新单季」没有时效价值，故只在非年报里取
+    keys = sorted((k for k in vals if not k.endswith("1231")), reverse=True)
+    if not keys:
+        return {"applicable": False, "period": None, "rev_yoy": None, "np_yoy": None}
+
+    k = keys[0]
+    y, mmdd = k[:4], k[4:]
+    prev_y = str(int(y) - 1)
+    out: dict[str, Any] = {"applicable": True, "period": f"{y}{_QUARTER_LABEL[mmdd]}",
+                           "rev_yoy": None, "np_yoy": None}
+    for field, key in (("TOTALOPERATEREVE", "rev_yoy"), ("PARENTNETPROFIT", "np_yoy")):
+        cur_v, base_v = _single(y, mmdd, field), _single(prev_y, mmdd, field)
+        if cur_v is None or base_v is None or base_v <= 0:
+            continue
+        out[key] = cur_v / base_v - 1
+    return out
+
 def _split_quarters(periods: list[dict[str, Any]] | None) -> dict[str, dict[str, float]]:
     vals: dict[str, float] = {}
     for p in periods or []:

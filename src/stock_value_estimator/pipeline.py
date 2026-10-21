@@ -18,6 +18,7 @@ from .screening.red_flags import (
     neg_cf_years,
     pledge_pressure,
     profit_crashes,
+    quarter_yoy,
     quarterly_profile,
     unlock_pressure,
 )
@@ -132,6 +133,7 @@ def run(code: str, verbose: bool = False) -> dict[str, Any]:
         if isinstance(a.get("PARENTNETPROFITTZ"), (int, float)) and a["PARENTNETPROFITTZ"] < 0)
     latest["_np_crashes"] = profit_crashes(annuals)
     latest["_quarterly"] = quarterly_profile(periods)
+    latest["_q_yoy"] = quarter_yoy(periods)
     latest["_gross_margin_std"] = gross_margin_std(annuals)
 
     if len(annuals) >= 4:
@@ -251,11 +253,11 @@ def run(code: str, verbose: bool = False) -> dict[str, Any]:
     bps = latest.get("BPS")
     if not bps and equity and latest.get("TOTAL_SHARE"):
         bps = equity / latest["TOTAL_SHARE"]
-    val = valuate(mode, stage, latest, hist5, b_avg, bps, rt["price"],
-                  rt.get("pe"), rt.get("pb"), rf, ind_label)
-    val["bps"] = bps
-
+    # 股息率要进估值：低分红修正需要判断「股东是否已拿到现金」（2026-10-22 方案 B）
     dy = (dps_latest / rt["price"]) if (dps_latest and rt["price"]) else None
+    val = valuate(mode, stage, latest, hist5, b_avg, bps, rt["price"],
+                  rt.get("pe"), rt.get("pb"), rf, ind_label, dy=dy)
+    val["bps"] = bps
     e, prob, rs = calc_expected_return(rt["price"], val, dy, state)
     buy = (val["target"] * (1 - mos)) if val.get("target") else None
     val["buy"] = buy

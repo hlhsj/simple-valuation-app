@@ -120,13 +120,34 @@ def screen(name: str, latest: dict[str, Any], pledge_row: dict[str, Any] | None,
         soft.append(f"S9 市值偏小：总市值 {mv:.0f} 亿元（<{mv_cfg} 亿），"
                     f"抗风险能力、流动性与信息透明度均弱于大市值公司")
 
-    rev_yoy, np_yoy = latest.get("_rev_yoy_now"), latest.get("_np_yoy_now")
+    # S10 增收不增利：营收在扩张，利润没跟上。
+    # 与 S3（增速掉头）不同：S3 看「增速本身在变小」，S10 看「营收与利润背离」——
+    # 公司可能营收一路高增、利润原地踏步，S3 抓不到，但这正是价格战/成本失控的典型形态。
+    # 2026-10-22 修订：累计与单季**取更差者**。
+    # 累计口径对「前三季很好、单季转差」会滞后一个季度，而市场往往先对单季定价
+    # （宁德时代 2026Q3：累计 +31.6% 不触发，单季 +14.5% 触发，三季报后股价 −12%）。
     rp = P.get("revenue_profit", {})
-    if (isinstance(rev_yoy, (int, float)) and isinstance(np_yoy, (int, float))
-            and rev_yoy >= rp.get("rev_min", 0.05)
-            and np_yoy < rev_yoy * rp.get("np_ratio", 0.30)
-            and (rev_yoy - np_yoy) >= rp.get("gap_min", 0.05)):
-        soft.append(f"S10 增收不增利：最新一期营收 {rev_yoy:+.1%}，归母仅 {np_yoy:+.1%}"
+    rev_min = rp.get("rev_min", 0.05)
+    np_ratio = rp.get("np_ratio", 0.30)
+    gap_min = rp.get("gap_min", 0.05)
+
+    def _s10_hit(rev, npf) -> bool:
+        return (isinstance(rev, (int, float)) and isinstance(npf, (int, float))
+                and rev >= rev_min and npf < rev * np_ratio
+                and (rev - npf) >= gap_min)
+
+    qy = latest.get("_q_yoy") or {}
+    hit = None
+    cum_rev, cum_np = latest.get("_rev_yoy_now"), latest.get("_np_yoy_now")
+    if _s10_hit(cum_rev, cum_np):
+        hit = ("累计", cum_rev, cum_np)
+    if _s10_hit(qy.get("rev_yoy"), qy.get("np_yoy")):
+        # 两个口径都命中时，取增速差更大的那个（更差者）
+        if hit is None or (qy["rev_yoy"] - qy["np_yoy"]) > (hit[1] - hit[2]):
+            hit = (f"单季 {qy.get('period') or ''}".strip(), qy["rev_yoy"], qy["np_yoy"])
+    if hit:
+        scope, rev_yoy, np_yoy = hit
+        soft.append(f"S10 增收不增利（{scope}）：营收 {rev_yoy:+.1%}，归母仅 {np_yoy:+.1%}"
                     f"（增速差 {(rev_yoy - np_yoy) * 100:.1f}pp）——营收在扩张，利润没有跟上，"
                     f"多为价格战、成本失控或低毛利业务占比上升")
 
