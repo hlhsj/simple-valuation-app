@@ -242,6 +242,50 @@ tbody tr.open{background:rgba(14,21,32,.6)}
 .tip-bars{margin:16px 0;border:1px dashed var(--ink-700);border-radius:12px;padding:16px;text-align:center;font-size:12.5px;color:var(--mist-700)}
 
 .disclaimer{margin-top:20px;border:1px solid var(--ink-700);background:var(--ink-900);border-radius:12px;padding:12px 16px;font-size:11.5px;line-height:1.7;color:var(--mist-700)}
+
+.hist-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;margin:0 0 10px}
+.hist-sum{margin:0;font-size:11.5px;color:var(--mist-600)}
+.hist-sum b{color:var(--gold);font-weight:400}
+.hist-periods{display:flex;gap:4px}
+.hist-periods button{border:1px solid var(--ink-700);background:var(--ink-900);color:var(--mist-500);
+  border-radius:8px;padding:3px 9px;font-size:11px;cursor:pointer}
+.hist-periods button.on{border-color:var(--gold);color:var(--gold);background:rgba(216,171,74,.1)}
+.hist-wrap{position:relative;margin:0 2px}
+.hist-svg{display:block;width:100%;height:auto;overflow:visible}
+.hist-tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .12s;
+  border:1px solid var(--ink-600);background:rgba(10,15,24,.95);border-radius:8px;
+  padding:6px 9px;font-size:11px;line-height:1.55;color:var(--mist-200);white-space:nowrap;z-index:5}
+.hist-tip .d{color:var(--mist-600)}
+.hist-empty{margin:0;padding:18px 0;text-align:center;font-size:12.5px;color:var(--mist-700)}
+
+.dim-toggle{margin:10px 0 0;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--ink-700);
+  background:var(--ink-900);color:var(--mist-400);border-radius:9px;padding:5px 11px;font-size:11.5px;cursor:pointer}
+.dim-toggle:hover{border-color:var(--gold);color:var(--gold-soft)}
+.dim-detail{margin:12px 0 0;display:grid;gap:10px}
+.dim-detail[hidden]{display:none}
+.dim-block{border:1px solid var(--ink-750);border-radius:11px;padding:10px 12px;background:rgba(14,21,32,.5)}
+.dim-block-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 0 7px}
+.dim-block-h .t{font:13px/1.3 var(--serif);color:var(--mist-100)}
+.dim-block-h .s{font:12px/1 var(--serif);color:var(--gold)}
+.dim-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.dim-tbl th{text-align:left;font-weight:400;color:var(--mist-700);padding:3px 6px 5px;border-bottom:1px solid var(--ink-750)}
+.dim-tbl td{padding:4px 6px;color:var(--mist-300);border-bottom:1px solid rgba(29,41,56,.55)}
+.dim-tbl tr:last-child td{border-bottom:0}
+.dim-tbl .n{text-align:right;font:11px/1.3 var(--serif);color:var(--mist-100)}
+.dim-tbl .n.sc{color:var(--gold)}
+.dim-note{margin:6px 0 0;font-size:10.5px;color:var(--mist-700)}
+
+.db-bar{margin:12px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.db-btn{border:1px solid var(--ink-600);background:transparent;color:var(--mist-400);
+  border-radius:9px;padding:6px 13px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.db-btn:hover:not(:disabled){border-color:var(--mist-500);color:var(--mist-200)}
+.db-btn:disabled{opacity:.55;cursor:default}
+.db-msg{margin:0;font-size:11.5px;color:var(--mist-600)}
+.db-msg .c-gold{font-family:var(--serif)}
+.db-err{color:var(--down)}
+.ruler-line.db{background:var(--mist-600)}
+.ruler-line.db.dash{opacity:.85;background:repeating-linear-gradient(180deg,var(--mist-500) 0 3px,transparent 3px 6px)}
+.ruler-label .ruler-k.db{color:var(--mist-600)}
 </style>
 </head>
 <body>
@@ -496,6 +540,18 @@ document.querySelectorAll('.examples button').forEach(b => {
   });
 });
 
+const debubbleState = {};
+const HIST_PERIODS = [['1m', '1 月'], ['3m', '3 月'], ['1y', '1 年'], ['3y', '3 年'], ['all', '全部']];
+let histPeriod = '1y';
+
+function fmtUnit(v, unit) {
+  if (v === null || v === undefined || !Number.isFinite(v)) return '—';
+  if (unit === 'pct') return v.toFixed(1) + '%';
+  if (unit === 'x') return v.toFixed(2) + ' 倍';
+  if (unit === 'days') return v.toFixed(1) + ' 天';
+  return Math.abs(v) >= 100 ? v.toFixed(1) : v.toFixed(2);
+}
+
 function renderAll() { renderTable(); renderDetail(); syncRunButton(); }
 
 function premium(row) {
@@ -620,11 +676,97 @@ function renderDetail() {
     </div>
     <p class="detail-meta">${esc(row.industry ?? '—')}　·　${esc(row.mode ?? '—')} × ${esc(row.stage ?? '—')}${row.substage ? `（${esc(row.substage)}）` : ''}　·　现价 ${num(row.price)}${row._elapsed ? `　·　耗时 ${row._elapsed}s` : ''}</p>
     <div class="dgrid">
-      <div class="dcol">${rangeCard(row)}${trendCard(row)}</div>
+      <div class="dcol">${rangeCard(row)}${historyCard(row)}${trendCard(row)}</div>
       <div class="dcol">${dimsCard(row)}${gateCard(row)}${paramCard(row)}</div>
     </div>`;
   const c = $('#collapse');
   if (c) c.addEventListener('click', () => expandRow(row.code));
+  bindDetailEvents(row);
+}
+
+function bindDetailEvents(row) {
+  const tb = $('#dim-toggle'), dd = $('#dim-detail');
+  if (tb && dd) {
+    tb.addEventListener('click', () => {
+      const open = !dd.hidden;
+      dd.hidden = open;
+      tb.lastChild.textContent = open ? ' 查看六维明细' : ' 收起六维明细';
+    });
+  }
+  const hp = $('#hist-periods');
+  if (hp) {
+    hp.addEventListener('click', e => {
+      const b = e.target.closest('button[data-hp]');
+      if (!b) return;
+      histPeriod = b.dataset.hp;
+      renderDetail();
+    });
+  }
+  const db = $('#db-btn');
+  if (db) db.addEventListener('click', () => onDebubble(row));
+  bindHistHover();
+}
+
+async function onDebubble(row) {
+  const code = row.code;
+  const st = debubbleState[code] || (debubbleState[code] = {});
+  if (st.result) {
+    delete st.result;
+    renderDetail();
+    return;
+  }
+  st.loading = true; st.error = null;
+  renderDetail();
+  try {
+    const r = await fetch('/api/valuate?code=' + encodeURIComponent(code) + '&debubble=1');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || '计算失败');
+    st.result = (d.row && d.row.debubble_result) || { applicable: false, reason: '未能取得去泡沫结果' };
+  } catch (e) {
+    st.error = (e && e.message) || String(e);
+  } finally {
+    st.loading = false;
+    renderDetail();
+  }
+}
+
+function bindHistHover() {
+  const wrap = document.querySelector('.hist-wrap');
+  if (!wrap) return;
+  const svg = wrap.querySelector('.hist-svg'), tip = wrap.querySelector('.hist-tip');
+  if (!svg || !tip) return;
+  const row = rows.find(r => r.code === expanded);
+  const ch = row && row.channel;
+  const win = ch && ch.series ? histWindow(ch.series.points || []) : [];
+  if (!win.length) return;
+  const L = +svg.dataset.l, R = +svg.dataset.r, W = 660;
+  const move = ev => {
+    const box = svg.getBoundingClientRect();
+    const rel = (ev.clientX - box.left) / box.width;
+    const t = (rel * W - L) / Math.max(1, W - L - R);
+    const i = Math.max(0, Math.min(win.length - 1, Math.round(t * (win.length - 1))));
+    const p = win[i];
+    const xg = L + (i / Math.max(1, win.length - 1)) * (W - L - R);
+    const xl = xg / W * box.width;
+    const line = svg.querySelector('.hist-x'), dot = svg.querySelector('.hist-dot');
+    if (line) { line.setAttribute('x1', xg); line.setAttribute('x2', xg);
+      line.setAttribute('y1', +svg.dataset.t); line.setAttribute('y2', 190 - +svg.dataset.b);
+      line.setAttribute('opacity', '0.6'); }
+    const y0 = +svg.dataset.y0, y1 = +svg.dataset.y1;
+    const yg = +svg.dataset.t + (1 - (p.v - y0) / (y1 - y0)) * (190 - +svg.dataset.t - +svg.dataset.b);
+    if (dot) { dot.setAttribute('cx', xg); dot.setAttribute('cy', yg); dot.setAttribute('opacity', '1'); }
+    tip.innerHTML = `<div class="d">${p.d}</div>估值 ${p.v.toFixed(2)}`;
+    tip.style.opacity = '1';
+    tip.style.left = Math.min(box.width - 120, Math.max(0, xl - 40)) + 'px';
+    tip.style.top = '4px';
+  };
+  svg.addEventListener('mousemove', move);
+  svg.addEventListener('mouseleave', () => {
+    tip.style.opacity = '0';
+    const line = svg.querySelector('.hist-x'), dot = svg.querySelector('.hist-dot');
+    if (line) line.setAttribute('opacity', '0');
+    if (dot) dot.setAttribute('opacity', '0');
+  });
 }
 
 function rangeCard(row) {
@@ -638,7 +780,9 @@ function rangeCard(row) {
       <p style="margin:0;padding:24px 0;text-align:center;font-size:12.5px;color:var(--mist-700)">该样本未进入估值阶段（L1 排雷未通过或行业规则回避）</p></div>`;
   }
 
-  const pts = [lo, hi, target, buy, price].filter(v => v !== null && v !== undefined && Number.isFinite(v) && v > 0);
+  const db = (debubbleState[row.code] || {}).result;
+  const dbTarget = db && db.applicable ? db.target : null;
+  const pts = [lo, hi, target, buy, price, dbTarget].filter(v => v !== null && v !== undefined && Number.isFinite(v) && v > 0);
   const dMin = Math.min(...pts), dMax = Math.max(...pts);
   const span = (dMax - dMin) || 1;
   const min = dMin - span * 0.12, max = dMax + span * 0.12;
@@ -647,6 +791,7 @@ function rangeCard(row) {
   const marks = [
     { label: '理论安全边际', v: buy, line: 'bg-down', text: 'c-down', dash: true },
     { label: '公平价', v: target, line: 'bg-gold', text: 'c-gold' },
+    { label: '去泡沫', v: dbTarget, line: 'db', text: 'c-mist', dash: true },
     { label: '现价', v: price, line: 'bg-up', text: 'c-up' },
   ].filter(m => Number.isFinite(m.v) && m.v > 0);
 
@@ -675,7 +820,7 @@ function rangeCard(row) {
 
   return `<div class="card">
     <h2 class="dcard-title">估值区间</h2>
-    <p class="ruler-legend">色带为合理区间；<span class="c-down">绿线理论安全边际</span> ·<span class="c-gold"> 金线公平价</span> ·<span class="c-up"> 红线现价</span></p>
+    <p class="ruler-legend">色带为合理区间；<span class="c-down">绿线理论安全边际</span> ·<span class="c-gold"> 金线公平价</span> ·<span class="c-up"> 红线现价</span>${dbTarget ? ' ·<span class="c-mist"> 灰虚线去泡沫计算值</span>' : ''}</p>
     <div class="ruler">
       <div class="ruler-axis"></div>
       <div class="ruler-band" style="left:${pos(lo)}%;width:${bandW}%"></div>
@@ -685,6 +830,116 @@ function rangeCard(row) {
     </div>
     <dl class="kv">${kv}</dl>
     ${er}
+    ${dbBar(row)}
+  </div>`;
+}
+
+function dbBar(row) {
+  const ch = row.channel || {};
+  const info = ch.debubble || {};
+  const st = debubbleState[row.code] || {};
+  if (!info.can) {
+    return `<div class="db-bar"><p class="db-msg">${esc(info.reason || '该样本不支持去泡沫计算')}</p></div>`;
+  }
+  const btn = `<button type="button" class="db-btn" id="db-btn" ${st.loading ? 'disabled' : ''}>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
+    ${st.loading ? '计算中…' : st.result ? '移除去泡沫计算值' : '去泡沫计算'}</button>`;
+  let msg = '';
+  if (st.error) {
+    msg = `<p class="db-msg db-err">${esc(st.error)}</p>`;
+  } else if (st.result && st.result.applicable) {
+    const d = st.result.delta;
+    msg = `<p class="db-msg">去泡沫公平价 <span class="c-gold">${num(st.result.target)}</span>（相对主口径 ${d >= 0 ? '+' : ''}${pct(d)}）· 剔除 ${st.result.removed ?? 0}/${st.result.n_raw ?? '—'} 个最高样本</p>`;
+  } else if (st.result) {
+    msg = `<p class="db-msg">${esc(st.result.reason || '无法完成去泡沫计算')}</p>`;
+  } else {
+    msg = `<p class="db-msg">按「近 ${info.years ?? 3} 年 + 剔除最高 ${Math.round((1 - (info.cut_top ?? 0.9)) * 100)}% 样本」重算，作为估值对照</p>`;
+  }
+  return `<div class="db-bar">${btn}${msg}</div>`;
+}
+
+function histWindow(points) {
+  if (!points || !points.length) return [];
+  if (histPeriod === 'all') return points;
+  const spanMs = { '1m': 30, '3m': 91, '1y': 365, '3y': 1095 }[histPeriod] * 86400000;
+  const last = new Date(points[points.length - 1].d).getTime();
+  const from = last - spanMs;
+  return points.filter(p => new Date(p.d).getTime() >= from);
+}
+
+function histSvg(points, low) {
+  const W = 660, H = 190, L = 46, R = 12, T = 14, B = 26;
+  const xs = points.map((p, i) => i);
+  const vs = points.map(p => p.v);
+  const vMin = Math.min(...vs), vMax = Math.max(...vs);
+  const pad = (vMax - vMin || 1) * 0.12;
+  const y0 = vMin - pad, y1 = vMax + pad;
+  const px = i => L + (i / Math.max(1, points.length - 1)) * (W - L - R);
+  const py = v => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  const line = points.map((p, i) => (i ? 'L' : 'M') + px(i).toFixed(1) + ' ' + py(p.v).toFixed(1)).join(' ');
+  let lowMark = '';
+  if (low) {
+    const idx = points.findIndex(p => p.d === low.d);
+    if (idx >= 0) {
+      const x = px(idx), y = py(low.v);
+      lowMark = `<line x1="${L}" y1="${y.toFixed(1)}" x2="${W - R}" y2="${y.toFixed(1)}"
+        stroke="var(--mist-600)" stroke-width="1" stroke-dasharray="4 4" opacity=".7"/>
+        <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="var(--gold)"
+        stroke="var(--ink-950)" stroke-width="1.5"/>
+        <text x="${(x > W * 0.6 ? x - 8 : x + 8).toFixed(1)}" y="${(y - 7).toFixed(1)}"
+        text-anchor="${x > W * 0.6 ? 'end' : 'start'}" fill="var(--gold)"
+        font-size="10.5" font-family="var(--serif)">最低 ${low.v.toFixed(2)}</text>`;
+    }
+  }
+  const d0 = points[0].d, d1 = points[points.length - 1].d;
+  const ticks = `${L},${H - B} ${W - R},${H - B}`;
+  return `<svg class="hist-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
+    data-n="${points.length}" data-l="${L}" data-r="${R}" data-t="${T}" data-b="${B}"
+    data-y0="${y0}" data-y1="${y1}">
+    <line x1="${L}" y1="${T}" x2="${L}" y2="${H - B}" stroke="var(--ink-700)" stroke-width="1"/>
+    <line x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}" stroke="var(--ink-700)" stroke-width="1"/>
+    <text x="${L - 6}" y="${T + 4}" text-anchor="end" fill="var(--mist-700)" font-size="10"
+      font-family="var(--serif)">${vMax.toFixed(1)}</text>
+    <text x="${L - 6}" y="${H - B}" text-anchor="end" fill="var(--mist-700)" font-size="10"
+      font-family="var(--serif)">${vMin.toFixed(1)}</text>
+    <text x="${L}" y="${H - B + 15}" fill="var(--mist-700)" font-size="10">${d0}</text>
+    <text x="${W - R}" y="${H - B + 15}" text-anchor="end" fill="var(--mist-700)" font-size="10">${d1}</text>
+    ${lowMark}
+    <path d="${line}" fill="none" stroke="var(--gold)" stroke-width="1.6"
+      stroke-linejoin="round" stroke-linecap="round" opacity=".92"/>
+    <line class="hist-x" x1="0" y1="0" x2="0" y2="0" stroke="var(--mist-500)"
+      stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
+    <circle class="hist-dot" cx="0" cy="0" r="3" fill="var(--gold-soft)" opacity="0"/>
+  </svg>`;
+}
+
+function historyCard(row) {
+  const ch = row.channel;
+  if (!ch || !ch.applicable) {
+    return `<div class="card"><h2 class="dcard-title">历史估值</h2>
+      <p class="hist-empty">${esc((ch && ch.reason) || '该样本不依赖历史估值通道')}</p></div>`;
+  }
+  const ser = ch.series || {};
+  const pts = ser.points || [];
+  if (!pts.length) {
+    return `<div class="card"><h2 class="dcard-title">历史估值</h2>
+      <p class="hist-empty">历史样本不足，无法绘制走势</p></div>`;
+  }
+  const win = histWindow(pts);
+  const low = win.reduce((a, b) => (b.v < a.v ? b : a), win[0]);
+  const curPct = (ch.cur_pct !== null && ch.cur_pct !== undefined)
+    ? `　·　当前历史分位 <b>${(ch.cur_pct * 100).toFixed(0)}%</b>` : '';
+  const btns = HIST_PERIODS.map(([k, label]) =>
+    `<button type="button" data-hp="${k}" class="${k === histPeriod ? 'on' : ''}">${label}</button>`).join('');
+  return `<div class="card">
+    <div class="hist-head">
+      <h2 class="dcard-title" style="margin:0">历史估值</h2>
+      <div class="hist-periods" id="hist-periods">${btns}</div>
+    </div>
+    <p class="hist-sum">${esc(ch.model || '')} 历史 <b>${ser.n}</b> 个样本　·　区间内最低 <b>${low.v.toFixed(2)}</b>（${low.d}）${curPct}</p>
+    <div class="hist-wrap">${histSvg(win, low)}<div class="hist-tip" id="hist-tip"></div></div>
   </div>`;
 }
 
@@ -723,6 +978,35 @@ function trendCard(row) {
   </div>`;
 }
 
+function dimDetailHtml(row) {
+  const dd = row.dim_detail;
+  if (!dd) return '';
+  return Object.entries(DIM_LABELS).map(([k, label]) => {
+    const blk = dd[k];
+    if (!blk) return '';
+    const items = blk.items || [];
+    if (!items.length) return '';
+    const rows = items.map(it => `
+      <tr>
+        <td>${esc(it.label)}</td>
+        <td class="n">${fmtUnit(it.value, it.unit)}</td>
+        <td class="n sc">${(it.score === null || it.score === undefined) ? '—' : it.score.toFixed(1)}</td>
+        <td class="n">${(it.weight * 100).toFixed(0)}%</td>
+        <td>${it.basis === 'peer' ? `同业分位${it.peer_n ? '（n=' + it.peer_n + '）' : ''}`
+          : it.basis === 'anchor' ? '绝对阈值' : '查表'}</td>
+      </tr>`).join('');
+    const miss = blk.missing || 0;
+    return `<div class="dim-block">
+      <div class="dim-block-h"><span class="t">${label}</span>
+        <span class="s">${(blk.score === null || blk.score === undefined) ? '—' : blk.score.toFixed(1)}</span></div>
+      <table class="dim-tbl"><thead><tr>
+        <th>指标</th><th>原始值</th><th>得分</th><th>权重</th><th>口径</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+      ${miss ? `<p class="dim-note">${miss}/${items.length + miss} 项缺数据，维度得分由其余项归一计算</p>` : ''}
+    </div>`;
+  }).join('');
+}
+
 function dimsCard(row) {
   const has = row.score_total !== null && row.score_total !== undefined;
   const head = `<div class="dim-head">
@@ -742,8 +1026,17 @@ function dimsCard(row) {
     </div>`;
   }).join('');
 
+  const detail = dimDetailHtml(row);
+  const toggle = detail ? `<button type="button" class="dim-toggle" id="dim-toggle">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+      <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+      <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+    </svg> 查看六维明细</button>
+    <div class="dim-detail" id="dim-detail" hidden>${detail}</div>` : '';
   return `<div class="card">${head}<div>${bars}</div>${!row.dims
-    ? '<p style="margin:0;font-size:12.5px;color:var(--mist-700)">该样本未进入六维评价阶段</p>' : ''}</div>`;
+    ? '<p style="margin:0;font-size:12.5px;color:var(--mist-700)">该样本未进入六维评价阶段</p>' : ''}${toggle}</div>`;
 }
 
 function gateCard(row) {

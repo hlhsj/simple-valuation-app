@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import statistics as st
 from typing import Any
 
 from ..config import weights as weights_cfg
@@ -16,90 +17,179 @@ W = weights_cfg()
 def _w(section: str) -> dict[str, float]:
     return W.get(section) or {}
 
+def _item(key: str, label: str, value, score, weight: float, basis: str,
+          unit: str, *, note: str | None = None,
+          peer_median: float | None = None,
+          peer_n: int | None = None) -> dict[str, Any]:
+    v = value
+    if v is not None and not isinstance(v, str):
+        v = float(v)
+    return {
+        "key": key, "label": label, "value": v,
+        "score": None if score is None else float(score),
+        "weight": float(weight), "basis": basis, "unit": unit,
+        "note": note,
+        "peer_median": None if peer_median is None else float(peer_median),
+        "peer_n": peer_n,
+    }
+
+def _pct(v):
+    return None if v is None else v * 100
+
+def _peer_item(key: str, label: str, value, arr: list, higher_better: bool,
+               weight: float, unit: str) -> dict[str, Any]:
+    xs = [x for x in arr if x is not None]
+    med = st.median(xs) if len(xs) >= 3 else None
+    return _item(key, label, value, pct_rank(value, arr, higher_better), weight,
+                 "peer", unit, peer_median=med, peer_n=len(xs))
+
+def _dim(items: list[dict[str, Any]]) -> float | None:
+    return weighted([(it["score"], it["weight"]) for it in items])
+
 def score(latest: dict[str, Any], peers: list[dict[str, Any]],
-          goodwill_ratio: float | None, mode: str) -> tuple[dict, float | None, dict]:
+          goodwill_ratio: float | None, mode: str
+          ) -> tuple[dict, float | None, dict, list, dict]:
     fin = latest.get
     pv = lambda k: [p.get(k) for p in peers]
 
     roe = fin("ROEJQ")
     roic = fin("ROIC")
-    s_roe = score_anchors(roe, name="roe")
-    s_nm = score_anchors(fin("XSJLL"), name="net_margin")
-    s_gm = score_anchors(fin("XSMLL"), name="gross_margin")
-    s_roic = score_anchors(None if roic is None else roic - 8.0, name="roic_minus_8")
     w = _w("profit")
-    profit = weighted([(s_roe, w["roe"]), (s_nm, w["net_margin"]),
-                       (s_gm, w["gross_margin"]), (s_roic, w["roic"])])
+    profit_items = [
+        _item("roe", "ROE", roe, score_anchors(roe, name="roe"),
+              w["roe"], "anchor", "pct"),
+        _item("net_margin", "净利率", fin("XSJLL"),
+              score_anchors(fin("XSJLL"), name="net_margin"),
+              w["net_margin"], "anchor", "pct"),
+        _item("gross_margin", "毛利率", fin("XSMLL"),
+              score_anchors(fin("XSMLL"), name="gross_margin"),
+              w["gross_margin"], "anchor", "pct"),
+        _item("roic", "ROIC", roic,
+              score_anchors(None if roic is None else roic - 8.0, name="roic_minus_8"),
+              w["roic"], "anchor", "pct", note="按 ROIC − 8% 资金成本打分"),
+    ]
+    profit = _dim(profit_items)
 
     nco_used = latest.get("_ocf_np_5y")
+    nco_note = None
     if nco_used is None:
         nco_used = fin("NCO_NETPROFIT")
+        nco_note = "缺 5 年累计数据，降级为当期 OCF/归母"
     fcff, rev = fin("FCFF_FORWARD"), fin("TOTALOPERATEREVE")
     fcf_m = (fcff / rev) if (fcff is not None and rev) else None
-    s_nco = score_anchors(nco_used, name="cash_quality")
-    s_cr = score_anchors(fin("XSJXLYYSR"), name="cash_sales")
-    s_fcf = score_anchors(fcf_m, name="fcf_margin")
-    s_stab = cf_stability_score(latest.get("_neg_cf_years", 0))
+    neg_years = latest.get("_neg_cf_years", 0)
     w = _w("cashflow")
-    cashflow = weighted([(s_nco, w["nco"]), (s_cr, w["cash_sales"]),
-                         (s_fcf, w["fcf_margin"]), (s_stab, w["stability"])])
+    cashflow_items = [
+        _item("nco", "现金含量 OCF/净利", nco_used,
+              score_anchors(nco_used, name="cash_quality"),
+              w["nco"], "anchor", "x", note=nco_note),
+        _item("cash_sales", "收现比", fin("XSJXLYYSR"),
+              score_anchors(fin("XSJXLYYSR"), name="cash_sales"),
+              w["cash_sales"], "anchor", "x"),
+        _item("fcf_margin", "FCF 利润率", _pct(fcf_m),
+              score_anchors(fcf_m, name="fcf_margin"),
+              w["fcf_margin"], "anchor", "pct"),
+        _item("stability", "经营现金流为负年数", neg_years,
+              cf_stability_score(neg_years), w["stability"], "table", "num"),
+    ]
+    cashflow = _dim(cashflow_items)
 
     rev_c, np_c = latest.get("_rev_cagr"), latest.get("_np_cagr")
-    s_rev = score_anchors(rev_c, name="cagr")
-    s_np = score_anchors(np_c, name="cagr")
-    s_rev_now = score_anchors(latest.get("_rev_yoy_now"), name="yoy_now")
-    s_np_now = score_anchors(latest.get("_np_yoy_now"), name="yoy_now")
     npf, kcf = fin("PARENTNETPROFIT"), fin("KCFJCXSYJLR")
     ded = (kcf / npf) if (npf and kcf is not None and npf > 0) else None
-    s_ded = score_anchors(ded, name="deduct_ratio")
-    s_qual = score_anchors(nco_used, name="cash_quality_growth")
-    s_cons = trend_consistency_score((latest.get("_trend") or {}).get("state"))
+    pc_state = (latest.get("_trend") or {}).get("state")
     w = _w("growth")
-    growth = weighted([(s_rev, w["rev_cagr"]), (s_np, w["np_cagr"]),
-                       (s_rev_now, w["rev_yoy_now"]), (s_np_now, w["np_yoy_now"]),
-                       (s_qual, w["cash_quality"]), (s_ded, w["deduct_ratio"]),
-                       (s_cons, w["consistency"])])
+    growth_items = [
+        _item("rev_cagr", "营收 CAGR", _pct(rev_c), score_anchors(rev_c, name="cagr"),
+              w["rev_cagr"], "anchor", "pct"),
+        _item("np_cagr", "净利 CAGR", _pct(np_c), score_anchors(np_c, name="cagr"),
+              w["np_cagr"], "anchor", "pct"),
+        _item("rev_yoy_now", "营收同比（最新）", _pct(latest.get("_rev_yoy_now")),
+              score_anchors(latest.get("_rev_yoy_now"), name="yoy_now"),
+              w["rev_yoy_now"], "anchor", "pct"),
+        _item("np_yoy_now", "净利同比（最新）", _pct(latest.get("_np_yoy_now")),
+              score_anchors(latest.get("_np_yoy_now"), name="yoy_now"),
+              w["np_yoy_now"], "anchor", "pct"),
+        _item("cash_quality", "增长的现金支撑", nco_used,
+              score_anchors(nco_used, name="cash_quality_growth"),
+              w["cash_quality"], "anchor", "x"),
+        _item("deduct_ratio", "扣非/归母", ded,
+              score_anchors(ded, name="deduct_ratio"),
+              w["deduct_ratio"], "anchor", "x"),
+        _item("consistency", "趋势一致性", pc_state,
+              trend_consistency_score(pc_state), w["consistency"], "table", "text"),
+    ]
+    growth = _dim(growth_items)
 
     bank_fields = (fin("NEWCAPITALADER"), fin("NONPERLOAN"), fin("BLDKBBL"))
     is_bank = mode == "资本型" and any(x is not None for x in bank_fields)
-    if is_bank:
-        s_ld = s_sd = s_int = None
-        s_cr2 = score_anchors(fin("NEWCAPITALADER"), name="car_solvency")
-    else:
-        s_ld = pct_rank(fin("LD"), pv("LD"), True)
-        s_sd = score_anchors(fin("SD"), name="quick_ratio")
-        s_cr2 = score_anchors(fin("CASH_RATIO"), name="cash_ratio")
-        s_int = score_anchors(fin("INTEREST_COVERAGE_RATIO"), name="interest_cover")
     w = _w("solvency")
-    solvency = weighted([(s_ld, w["current_ratio"]), (s_sd, w["quick_ratio"]),
-                         (s_cr2, w["cash_ratio"]), (s_int, w["interest_cover"])])
+    if is_bank:
+        solvency_items = [
+            _item("car_solvency", "资本充足率", fin("NEWCAPITALADER"),
+                  score_anchors(fin("NEWCAPITALADER"), name="car_solvency"),
+                  1.0, "anchor", "pct", note="银行口径，替代流动比率"),
+        ]
+    else:
+        solvency_items = [
+            _peer_item("current_ratio", "流动比率", fin("LD"), pv("LD"), True,
+                       w["current_ratio"], "x"),
+            _item("quick_ratio", "速动比率", fin("SD"),
+                  score_anchors(fin("SD"), name="quick_ratio"),
+                  w["quick_ratio"], "anchor", "x"),
+            _item("cash_ratio", "现金比率", fin("CASH_RATIO"),
+                  score_anchors(fin("CASH_RATIO"), name="cash_ratio"),
+                  w["cash_ratio"], "anchor", "x"),
+            _item("interest_cover", "利息保障倍数", fin("INTEREST_COVERAGE_RATIO"),
+                  score_anchors(fin("INTEREST_COVERAGE_RATIO"), name="interest_cover"),
+                  w["interest_cover"], "anchor", "x"),
+        ]
+    solvency = _dim(solvency_items)
 
-    o_to = pct_rank(fin("TOAZZL"), pv("TOAZZL"), True)
-    o_inv = pct_rank(fin("CHZZTS"), pv("CHZZTS"), False)
-    o_ar = pct_rank(fin("YSZKZZTS"), pv("YSZKZZTS"), False)
-    o_ap = pct_rank(fin("PAYABLE_TDAYS"), pv("PAYABLE_TDAYS"), True)
-    o_ccc = pct_rank(fin("OPERATE_CYCLE"), pv("OPERATE_CYCLE"), False)
     w = _w("operation")
-    operation = weighted([(o_to, w["asset_turnover"]), (o_inv, w["inv_days"]),
-                          (o_ar, w["ar_days"]), (o_ap, w["ap_days"]), (o_ccc, w["ccc"])])
+    operation_items = [
+        _peer_item("asset_turnover", "总资产周转率", fin("TOAZZL"), pv("TOAZZL"), True,
+                   w["asset_turnover"], "x"),
+        _peer_item("inv_days", "存货周转天数", fin("CHZZTS"), pv("CHZZTS"), False,
+                   w["inv_days"], "days"),
+        _peer_item("ar_days", "应收周转天数", fin("YSZKZZTS"), pv("YSZKZZTS"), False,
+                   w["ar_days"], "days"),
+        _peer_item("ap_days", "应付周转天数", fin("PAYABLE_TDAYS"), pv("PAYABLE_TDAYS"), True,
+                   w["ap_days"], "days"),
+        _peer_item("ccc", "现金周期", fin("OPERATE_CYCLE"), pv("OPERATE_CYCLE"), False,
+                   w["ccc"], "days"),
+    ]
+    operation = _dim(operation_items)
 
     liab = fin("LIABILITY")
     int_debt = latest.get("_int_debt")
     ib = (int_debt / liab) if (int_debt is not None and liab and liab > 0) else None
     if is_bank:
-        s_npl = score_anchors(fin("NONPERLOAN"), name="npl")
-        s_prov = score_anchors(fin("BLDKBBL"), name="provision")
-        s_car2 = score_anchors(fin("NEWCAPITALADER"), name="car")
         wb = _w("asset_bank")
-        asset = weighted([(s_npl, wb["npl"]), (s_prov, wb["provision"]), (s_car2, wb["car"])])
+        asset_items = [
+            _item("npl", "不良贷款率", fin("NONPERLOAN"),
+                  score_anchors(fin("NONPERLOAN"), name="npl"), wb["npl"], "anchor", "pct"),
+            _item("provision", "拨备覆盖率", fin("BLDKBBL"),
+                  score_anchors(fin("BLDKBBL"), name="provision"),
+                  wb["provision"], "anchor", "pct"),
+            _item("car", "资本充足率", fin("NEWCAPITALADER"),
+                  score_anchors(fin("NEWCAPITALADER"), name="car"),
+                  wb["car"], "anchor", "pct"),
+        ]
         ib = None
     else:
-        a_dr = pct_rank(fin("ZCFZL"), pv("ZCFZL"), False)
-        a_ibd = score_anchors(ib, name="int_debt_ratio")
-        a_gw = score_anchors(goodwill_ratio, name="goodwill_ratio")
         wg = _w("asset_general")
-        asset = weighted([(a_dr, wg["debt_ratio"]), (a_ibd, wg["int_debt_ratio"]),
-                          (a_gw, wg["goodwill_ratio"])])
+        asset_items = [
+            _peer_item("debt_ratio", "资产负债率", fin("ZCFZL"), pv("ZCFZL"), False,
+                       wg["debt_ratio"], "pct"),
+            _item("int_debt_ratio", "有息负债率", _pct(ib),
+                  score_anchors(ib, name="int_debt_ratio"),
+                  wg["int_debt_ratio"], "anchor", "pct"),
+            _item("goodwill_ratio", "商誉/净资产", _pct(goodwill_ratio),
+                  score_anchors(goodwill_ratio, name="goodwill_ratio"),
+                  wg["goodwill_ratio"], "anchor", "pct"),
+        ]
+    asset = _dim(asset_items)
 
     dims = {"profit": profit, "cashflow": cashflow, "growth": growth,
             "solvency": solvency, "operation": operation, "asset": asset}
@@ -125,7 +215,19 @@ def score(latest: dict[str, Any], peers: list[dict[str, Any]],
         "npl": fin("NONPERLOAN"), "prov": fin("BLDKBBL"), "car": fin("NEWCAPITALADER"),
         "bank_metric": is_bank,
     }
-    return dims, total, details, missing
+
+    items_by_dim = {"profit": profit_items, "cashflow": cashflow_items,
+                    "growth": growth_items, "solvency": solvency_items,
+                    "operation": operation_items, "asset": asset_items}
+    for items in items_by_dim.values():
+        tot = sum(it["weight"] for it in items) or 1.0
+        for it in items:
+            it["weight"] = round(it["weight"] / tot, 4)
+    breakdown = {
+        k: {"score": dims[k], "weight": dw.get(k, 0.0), "items": items_by_dim[k]}
+        for k in dims
+    }
+    return dims, total, details, missing, breakdown
 
 def grade(total: float | None) -> tuple[str, float]:
     from ..config import params

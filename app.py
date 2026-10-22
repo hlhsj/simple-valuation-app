@@ -24,7 +24,7 @@ _CTX.check_hostname = False
 _CTX.verify_mode = ssl.CERT_NONE
 _UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
-_CACHE: dict[str, tuple[float, dict]] = {}
+_CACHE: dict[str, tuple[float, dict, dict]] = {}
 _LOCK = threading.Lock()
 
 def base_dir() -> Path:
@@ -93,19 +93,27 @@ def search(q: str, count: int = 8) -> list[dict]:
         pass
     return _search_tencent(q, count)
 
-def valuate(code: str) -> dict:
+def valuate(code: str, debubble: bool = False) -> dict:
+    from stock_value_estimator.pipeline import debubble_revalue
+    from stock_value_estimator.publish import clean
+
+    def decorate(row: dict, raw: dict, cached: bool) -> dict:
+        out = dict(row)
+        out["dim_detail"] = clean((raw.get("score") or {}).get("dim_detail"))
+        out["channel"] = clean(raw.get("channel"))
+        if debubble:
+            out["debubble_result"] = clean(debubble_revalue(raw))
+        out["_cached"] = cached
+        return out
+
     hit = _CACHE.get(code)
     if hit and time.time() - hit[0] < CACHE_TTL:
-        row = dict(hit[1])
-        row["_cached"] = True
-        return row
+        return decorate(hit[1], hit[2], True)
 
     with _LOCK:
         hit = _CACHE.get(code)
         if hit and time.time() - hit[0] < CACHE_TTL:
-            row = dict(hit[1])
-            row["_cached"] = True
-            return row
+            return decorate(hit[1], hit[2], True)
 
         from stock_value_estimator.pipeline import run
         from stock_value_estimator.publish import convert
@@ -116,9 +124,8 @@ def valuate(code: str) -> dict:
             raise RuntimeError(raw["error"])
         row = convert(raw)
         row["_elapsed"] = round(time.time() - t0, 1)
-        row["_cached"] = False
-        _CACHE[code] = (time.time(), row)
-        return row
+        _CACHE[code] = (time.time(), row, raw)
+        return decorate(row, raw, False)
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "StockValuationLocal/1.0"
@@ -168,8 +175,9 @@ class Handler(BaseHTTPRequestHandler):
             code = (qs.get("code") or [""])[0].strip()
             if not (len(code) == 6 and code.isdigit()):
                 return self._json({"ok": False, "error": "请输入 6 位股票代码"}, 400)
+            debubble = (qs.get("debubble") or [""])[0].strip() in ("1", "true", "yes")
             try:
-                return self._json({"ok": True, "row": valuate(code)})
+                return self._json({"ok": True, "row": valuate(code, debubble=debubble)})
             except Exception as e:
                 return self._json({"ok": False,
                                    "error": f"计算失败：{e}"}, 502)

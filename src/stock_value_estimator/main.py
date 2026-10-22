@@ -13,6 +13,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", dest="json_dir", default=None,
                     help="结果 JSON 输出目录")
     ap.add_argument("-v", "--verbose", action="store_true")
+    ap.add_argument("--card", action="store_true",
+                    help="输出完整评价卡（Markdown），替代默认的一行摘要")
     args = ap.parse_args(argv)
 
     out_dir = Path(args.json_dir) if args.json_dir else None
@@ -30,7 +32,10 @@ def main(argv: list[str] | None = None) -> int:
         results.append(r)
         if r.get("error"):
             continue
-        if r.get("rejected"):
+        if args.card:
+            from .report.card import render
+            print(render(r))
+        elif r.get("rejected"):
             print(f"  ❌ 淘汰 | {' / '.join(x.split(' ')[0] for x in r['gate']['hard'])}")
         elif r.get("avoid"):
             print("  ⚠ 回避（行业规则）")

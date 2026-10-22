@@ -21,6 +21,9 @@ def _json(v):
         return [_json(x) for x in v]
     return _num(v) if isinstance(v, float) else v
 
+def clean(v):
+    return _json(v)
+
 def convert(d: dict) -> dict:
     profile = d.get("profile") or {}
     val = d.get("valuation") or {}
@@ -73,4 +76,4 @@ def convert(d: dict) -> dict:
         row["verdict"] = row["verdict"] or "回避"
     return row
 
-__all__ = ["convert"]
+__all__ = ["convert", "clean"]

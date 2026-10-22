@@ -328,6 +328,23 @@ def ar_inventory_growth(bs_rows: dict[str, list[str]] | None,
     out["gap"] = worst[1]["gap"] if worst[1] else None
     return out
 
+def _split_quarters(periods: list[dict[str, Any]] | None) -> dict[str, dict[str, float]]:
+    vals: dict[str, float] = {}
+    for p in periods or []:
+        d = (p.get("REPORT_DATE") or "")[:10]
+        npf = p.get("PARENTNETPROFIT")
+        if len(d) >= 10 and isinstance(npf, (int, float)):
+            vals[d[:4] + d[5:7] + d[8:10]] = float(npf)
+
+    out: dict[str, dict[str, float]] = {}
+    for y in sorted({k[:4] for k in vals}, reverse=True):
+        q1, h1 = vals.get(f"{y}0331"), vals.get(f"{y}0630")
+        q3, fy = vals.get(f"{y}0930"), vals.get(f"{y}1231")
+        if None in (q1, h1, q3, fy):
+            continue
+        out[y] = {"Q1": q1, "Q2": h1 - q1, "Q3": q3 - h1, "Q4": fy - q3, "FY": fy}
+    return out
+
 _QUARTER_PREV = {"0630": "0331", "0930": "0630", "1231": "0930"}
 _QUARTER_LABEL = {"0331": "Q1", "0630": "Q2", "0930": "Q3", "1231": "Q4"}
 
@@ -364,23 +381,6 @@ def quarter_yoy(periods: list[dict[str, Any]] | None) -> dict[str, Any]:
         if cur_v is None or base_v is None or base_v <= 0:
             continue
         out[key] = cur_v / base_v - 1
-    return out
-
-def _split_quarters(periods: list[dict[str, Any]] | None) -> dict[str, dict[str, float]]:
-    vals: dict[str, float] = {}
-    for p in periods or []:
-        d = (p.get("REPORT_DATE") or "")[:10]
-        npf = p.get("PARENTNETPROFIT")
-        if len(d) >= 10 and isinstance(npf, (int, float)):
-            vals[d[:4] + d[5:7] + d[8:10]] = float(npf)
-
-    out: dict[str, dict[str, float]] = {}
-    for y in sorted({k[:4] for k in vals}, reverse=True):
-        q1, h1 = vals.get(f"{y}0331"), vals.get(f"{y}0630")
-        q3, fy = vals.get(f"{y}0930"), vals.get(f"{y}1231")
-        if None in (q1, h1, q3, fy):
-            continue
-        out[y] = {"Q1": q1, "Q2": h1 - q1, "Q3": q3 - h1, "Q4": fy - q3, "FY": fy}
     return out
 
 def quarterly_profile(periods: list[dict[str, Any]] | None) -> dict[str, Any]:

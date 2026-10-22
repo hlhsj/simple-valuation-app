@@ -26,6 +26,7 @@ from .scoring import grade, score as six_dim_score
 from .scoring.anchors import cagr
 from .scoring.peer import peers_of
 from .valuation import ev_ebitda
+from .valuation import channel
 from .valuation import evaluate as valuate
 
 P = params()
@@ -95,6 +96,99 @@ def _ocf_quality(cf_rows: dict[str, list[str]] | None, cf_periods: list[str] | N
     ocf_yoy = (ocf[0][1] / ocf[1][1] - 1) if len(ocf) >= 2 and ocf[1][1] else None
     np_yoy = (npf[0][1] / npf[1][1] - 1) if len(npf) >= 2 and npf[1][1] else None
     return q5, ocf_yoy, np_yoy
+
+def _band_and_px(ch: dict, unit: float | None, keys: tuple[str, str, str]):
+    band = {out: ch.get(src) for out, src in zip(("p20", "p50", "p80"), keys)}
+    px = {k: (v * unit if (v and unit) else None) for k, v in band.items()}
+    return band, px
+
+def _build_channel(val: dict, rt: dict, bps: float | None,
+                   hist: list) -> dict:
+    primary = val.get("primary")
+    model = "PE" if primary == "PE" else ("PB" if primary == "PB" else None)
+    if model is None:
+        return {"model": primary, "applicable": False,
+                "reason": "EV/EBITDA 与回避类模型不依赖历史估值通道，去泡沫不适用"}
+
+    unit = val.get("eps_ttm") if model == "PE" else bps
+    ch = val.get("pe_ch") if model == "PE" else val.get("pb_ch")
+    keys = ("p20", "p50", "p80") if model == "PE" else ("b20", "b50", "b80")
+    band, px = _band_and_px(ch or {}, unit, keys)
+    out: dict = {
+        "applicable": True,
+        "model": model,
+        "unit": unit,
+        "window_years": HIST_YEARS,
+        "n": (ch or {}).get("n"),
+        "current": rt.get("pe") if model == "PE" else rt.get("pb"),
+        "cur_pct": val.get("cur_pct") if model == "PE" else val.get("pb_pct"),
+        "band": band,
+        "px": px,
+        "series": channel.series(hist, "PE_TTM" if model == "PE" else "PB_MRQ"),
+        "debubble": {"applicable": False, "reason": "该样本未产出公平价，无法二次估值"},
+    }
+    db_cfg = P.get("debubble", {})
+    out["debubble"] = {
+        "can": bool(val.get("target")),
+        "years": float(db_cfg.get("years", 3)),
+        "cut_top": float(db_cfg.get("cut_top", 0.9)),
+        "reason": None if val.get("target") else "该样本未产出公平价，无法二次估值",
+    }
+    return out
+
+def debubble_revalue(d: dict) -> dict | None:
+    ctx = d.get("_ctx")
+    val = d.get("valuation") or {}
+    if not ctx or not val.get("target"):
+        return None
+    primary = ctx.get("primary")
+    model = "PE" if primary == "PE" else ("PB" if primary == "PB" else None)
+    if model is None:
+        return None
+
+    rt, bps = ctx["rt"], ctx["bps"]
+    val_db = valuate(ctx["mode"], ctx["stage"], ctx["latest"], ctx["hist5"],
+                     ctx["b_avg"], bps, rt.get("price"), rt.get("pe"), rt.get("pb"),
+                     ctx["rf"], ctx["ind_label"], dy=ctx["dy"], debubble=True)
+    val_db["bps"] = bps
+    db_cfg = P.get("debubble", {})
+    if not val_db.get("target"):
+        return {"can": True, "applicable": False,
+                "reason": "去泡沫样本不足或倍数失效，无法二次估值",
+                "years": float(db_cfg.get("years", 3)),
+                "cut_top": float(db_cfg.get("cut_top", 0.9))}
+
+    unit = val.get("eps_ttm") if model == "PE" else bps
+    ch_db = val_db.get("pe_ch") if model == "PE" else val_db.get("pb_ch")
+    keys = ("p20", "p50", "p80") if model == "PE" else ("b20", "b50", "b80")
+    band_db, px_db = _band_and_px(ch_db or {}, unit, keys)
+
+    e_db, _prob, _rs = calc_expected_return(rt.get("price"), val_db, ctx["dy"], ctx["state"])
+    buy_db = val_db["target"] * (1 - ctx["mos"])
+    gate, trend = ctx["gate"], ctx["trend"]
+    verdict_db = judge(ctx["g_"], ctx["stage"], trend.get("state"), gate["risk_level"],
+                       len(gate["soft"]), rt.get("price"), val_db.get("fair_high"),
+                       val_db.get("fair_low"), buy_db, e_db, val_db["r"],
+                       invalid=val_db.get("invalid"))
+    return {
+        "can": True, "applicable": True,
+        "years": float(db_cfg.get("years", 3)),
+        "cut_top": float(db_cfg.get("cut_top", 0.9)),
+        "n": (ch_db or {}).get("n"),
+        "n_raw": (ch_db or {}).get("n_raw"),
+        "removed": (ch_db or {}).get("removed"),
+        "cut": (ch_db or {}).get("cut"),
+        "band": band_db,
+        "px": px_db,
+        "fair_multiple": val_db.get("fair_pe") if model == "PE" else val_db.get("fair_pb"),
+        "target": val_db.get("target"),
+        "fair_low": val_db.get("fair_low"),
+        "fair_high": val_db.get("fair_high"),
+        "buy": buy_db,
+        "e_return": e_db,
+        "verdict": verdict_db,
+        "delta": (val_db["target"] / val["target"] - 1),
+    }
 
 def run(code: str, verbose: bool = False) -> dict[str, Any]:
     log = (print if verbose else (lambda *a, **k: None))
@@ -247,7 +341,8 @@ def run(code: str, verbose: bool = False) -> dict[str, Any]:
         base.update({"rejected": True})
         return base
 
-    dims, total, details, missing_dims = six_dim_score(latest, peers, goodwill_ratio, mode)
+    dims, total, details, missing_dims, dim_detail = six_dim_score(
+        latest, peers, goodwill_ratio, mode)
     g_, mos = grade(total)
 
     bps = latest.get("BPS")
@@ -257,6 +352,7 @@ def run(code: str, verbose: bool = False) -> dict[str, Any]:
     val = valuate(mode, stage, latest, hist5, b_avg, bps, rt["price"],
                   rt.get("pe"), rt.get("pb"), rf, ind_label, dy=dy)
     val["bps"] = bps
+
     e, prob, rs = calc_expected_return(rt["price"], val, dy, state)
     buy = (val["target"] * (1 - mos)) if val.get("target") else None
     val["buy"] = buy
@@ -265,8 +361,17 @@ def run(code: str, verbose: bool = False) -> dict[str, Any]:
                     invalid=val.get("invalid"))
     ff, ff_notes = five_forces_analyze(latest, peers)
 
+    base["channel"] = _build_channel(val, rt, bps, hist5)
+    base["_ctx"] = {
+        "mode": mode, "stage": stage, "latest": latest, "hist5": hist5,
+        "b_avg": b_avg, "bps": bps, "rt": rt, "rf": rf, "ind_label": ind_label,
+        "dy": dy, "state": state, "g_": g_, "mos": mos, "trend": trend, "gate": gate,
+        "primary": val.get("primary"),
+    }
+
     base.update({
         "score": {"total": total, "grade": g_, "dims": dims, "details": details,
+                  "dim_detail": dim_detail,
                   "dupont": None, "peers": len(peers), "missing_dims": missing_dims},
         "profile": {"mode": mode, "zero_pe": zero_pe, "stage": stage,
                     "stage_why": stage_why, "substage": substage,

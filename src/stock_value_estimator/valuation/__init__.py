@@ -80,7 +80,8 @@ def evaluate(mode: str, stage: str, latest: dict[str, Any],
              bps: float | None, price: float | None, pe_now: float | None,
              pb_now: float | None, rf: float,
              industry_label: str | None = None,
-             dy: float | None = None) -> dict[str, Any]:
+             dy: float | None = None,
+             debubble: bool = False) -> dict[str, Any]:
     r, erp = required_return(mode, stage, rf)
     g, g_note = perpetual_growth(stage, latest, r)
 
@@ -96,9 +97,17 @@ def evaluate(mode: str, stage: str, latest: dict[str, Any],
             route_reason = why + " → 主模型降级为 EV/EBITDA"
             degraded = True
 
-    pe_ch = channel.pe_channel(hist)
-    pb_ch = channel.pb_channel(hist)
+    _db = P.get("debubble", {})
+    if debubble:
+        _yrs = float(_db.get("years", 3))
+        _cut = float(_db.get("cut_top", 0.9))
+        pe_ch = channel.pe_channel(hist, years=_yrs, cut_top=_cut)
+        pb_ch = channel.pb_channel(hist, years=_yrs, cut_top=_cut)
+    else:
+        pe_ch = channel.pe_channel(hist)
+        pb_ch = channel.pb_channel(hist)
     cur_pct = channel.current_percentile(hist, "PE_TTM", pe_now)
+    pb_pct = channel.current_percentile(hist, "PB_MRQ", pb_now)
 
     roe_med = latest.get("_roe_median")
     if roe_med is None:
@@ -117,10 +126,11 @@ def evaluate(mode: str, stage: str, latest: dict[str, Any],
         "p20": pe_ch["p20"], "p50": pe_ch["p50"], "p80": pe_ch["p80"],
         "b20": pb_ch["b20"], "b50": pb_ch["b50"], "b80": pb_ch["b80"],
         "g_sus": g_sus, "consistent": g <= g_sus + 0.005,
+        "debubble": debubble, "pe_ch": pe_ch, "pb_ch": pb_ch, "pb_pct": pb_pct,
     }
 
     if primary == "PB":
-        raw, fair, note = pb_model.fair_pb(roe_med, r, g, hist)
+        raw, fair, note = pb_model.fair_pb(roe_med, r, g, ch=pb_ch)
         penalty, pbits = (special.bank_asset_penalty(latest) if mode == "资本型" else (0.0, ""))
         if fair and penalty:
             fair = fair * (1 - penalty)
@@ -136,7 +146,7 @@ def evaluate(mode: str, stage: str, latest: dict[str, Any],
         _roe_now = latest.get("_roe_latest")
         _roe_for_b = max(roe_med, _roe_now) if _roe_now else roe_med
         b_eff, b_note = effective_b(b, r, g, _roe_for_b, dy=dy)
-        raw, fair, note = pe_model.fair_pe(b_eff, r, g, hist)
+        raw, fair, note = pe_model.fair_pe(b_eff, r, g, ch=pe_ch)
         target = fair * eps_ttm if (fair and eps_ttm) else None
         if b_note:
             note = f"{b_note}；{note}"
