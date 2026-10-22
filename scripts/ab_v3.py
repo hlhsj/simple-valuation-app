@@ -1,13 +1,3 @@
-# -*- coding: utf-8 -*-
-"""v3.0 低分红修正的同源 A/B：同一时刻、同一份数据，只切 `pe_low_b` 开/关。
-
-目的
-    证明修正只作用于「低分红 + ROE 高于要求回报」的公司，
-    分红正常的企业（茅台 b=0.62、海天 0.69、神华 0.81…）结果必须逐位不变。
-
-用法：python scripts/ab_v3.py [--only 600519]
-输出：scripts/output/ab_v3.json
-"""
 from __future__ import annotations
 
 import json
@@ -17,8 +7,8 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE / "src"))
 
-from stock_value_estimator.config import params  # noqa: E402
-from stock_value_estimator.pipeline import run  # noqa: E402
+from stock_value_estimator.config import params
+from stock_value_estimator.pipeline import run
 
 SAMPLES = [
     ("600519", "贵州茅台"), ("000858", "五粮液"), ("600809", "山西汾酒"),
@@ -36,7 +26,6 @@ SAMPLES = [
 ]
 
 KEYS = ("target", "fair_low", "fair_high", "buy", "fair_pe", "verdict", "b", "b_used")
-
 
 def snap(code: str) -> dict:
     d = run(code)
@@ -57,7 +46,6 @@ def snap(code: str) -> dict:
         "avoid": bool(d.get("avoid")),
     }
 
-
 def main() -> None:
     only = None
     if "--only" in sys.argv:
@@ -70,14 +58,12 @@ def main() -> None:
         if only and code != only:
             continue
         try:
-            cfg.update(orig)                       # 开启
+            cfg.update(orig)
             on = snap(code)
-            # 关闭：阈值置 0 → 任何 b ≥ 0 都不满足「b < 阈值」，等于全禁
-            # （曾误写成 9.99，反而让所有股票都进修正区，A/B 结果全废）
             cfg["b_threshold"] = 0.0
             off = snap(code)
             cfg.update(orig)
-        except Exception as e:                     # noqa: BLE001
+        except Exception as e:
             print(f"{nm} {code}  ERR {type(e).__name__}: {e}", flush=True)
             continue
 
@@ -103,7 +89,6 @@ def main() -> None:
         print(f"  {r['name']}: b {r['off']['b']}→{r['on']['b_used']}  "
               f"公平价 {r['off']['target']}→{r['on']['target']}  "
               f"判定 {r['off']['verdict']} → {r['on']['verdict']}")
-
 
 if __name__ == "__main__":
     main()

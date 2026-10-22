@@ -120,12 +120,6 @@ def screen(name: str, latest: dict[str, Any], pledge_row: dict[str, Any] | None,
         soft.append(f"S9 市值偏小：总市值 {mv:.0f} 亿元（<{mv_cfg} 亿），"
                     f"抗风险能力、流动性与信息透明度均弱于大市值公司")
 
-    # S10 增收不增利：营收在扩张，利润没跟上。
-    # 与 S3（增速掉头）不同：S3 看「增速本身在变小」，S10 看「营收与利润背离」——
-    # 公司可能营收一路高增、利润原地踏步，S3 抓不到，但这正是价格战/成本失控的典型形态。
-    # 2026-10-22 修订：累计与单季**取更差者**。
-    # 累计口径对「前三季很好、单季转差」会滞后一个季度，而市场往往先对单季定价
-    # （宁德时代 2026Q3：累计 +31.6% 不触发，单季 +14.5% 触发，三季报后股价 −12%）。
     rp = P.get("revenue_profit", {})
     rev_min = rp.get("rev_min", 0.05)
     np_ratio = rp.get("np_ratio", 0.30)
@@ -142,7 +136,6 @@ def screen(name: str, latest: dict[str, Any], pledge_row: dict[str, Any] | None,
     if _s10_hit(cum_rev, cum_np):
         hit = ("累计", cum_rev, cum_np)
     if _s10_hit(qy.get("rev_yoy"), qy.get("np_yoy")):
-        # 两个口径都命中时，取增速差更大的那个（更差者）
         if hit is None or (qy["rev_yoy"] - qy["np_yoy"]) > (hit[1] - hit[2]):
             hit = (f"单季 {qy.get('period') or ''}".strip(), qy["rev_yoy"], qy["np_yoy"])
     if hit:

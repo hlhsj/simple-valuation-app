@@ -253,7 +253,6 @@ def run(code: str, verbose: bool = False) -> dict[str, Any]:
     bps = latest.get("BPS")
     if not bps and equity and latest.get("TOTAL_SHARE"):
         bps = equity / latest["TOTAL_SHARE"]
-    # 股息率要进估值：低分红修正需要判断「股东是否已拿到现金」（2026-10-22 方案 B）
     dy = (dps_latest / rt["price"]) if (dps_latest and rt["price"]) else None
     val = valuate(mode, stage, latest, hist5, b_avg, bps, rt["price"],
                   rt.get("pe"), rt.get("pb"), rf, ind_label, dy=dy)

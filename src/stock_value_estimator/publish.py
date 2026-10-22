@@ -48,7 +48,6 @@ def convert(d: dict) -> dict:
         "r": _num(val.get("r")),
         "g": _num(val.get("g")),
         "b": _num(val.get("b")),
-        # v3.0：低分红企业按「留存再投资」口径修正后的分红率（只影响估值，不改展示的 b）
         "b_used": _num(val.get("b_used")),
         "target": _num(val.get("target")),
         "fair_low": _num(val.get("fair_low")),
