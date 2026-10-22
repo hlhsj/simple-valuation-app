@@ -13,11 +13,15 @@
 
 ## 界面预览
 
-![批量输入](shots/v29-03-filled.png)
+![输入联想：代码、中文名、拼音首字母均可](shots/v30-01-input.png)
 
-![结果表格](shots/v29-04-table.png)
+![批量输入与结果表格](shots/v30-02-table.png)
 
-![单只详情](shots/v29-05-detail.png)
+![单只详情：估值区间与历史估值走势](shots/v30-03-detail.png)
+
+![六维明细（独立页）](shots/v30-04-dims.png)
+
+![去泡沫计算](shots/v30-05-debubble.png)
 
 ---
 
