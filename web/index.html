@@ -286,6 +286,45 @@ tbody tr.open{background:rgba(14,21,32,.6)}
 .ruler-line.db{background:var(--mist-600)}
 .ruler-line.db.dash{opacity:.85;background:repeating-linear-gradient(180deg,var(--mist-500) 0 3px,transparent 3px 6px)}
 .ruler-label .ruler-k.db{color:var(--mist-600)}
+
+.dims-page{margin:18px 0 0}
+.dims-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 4px}
+.dims-title{font:400 20px/1.3 var(--serif);color:var(--mist-100)}
+.dims-title .c{font-size:12px;color:var(--mist-700);margin-left:8px}
+.dims-sub{margin:0 0 16px;font-size:12px;color:var(--mist-600)}
+.dims-back{border:1px solid var(--ink-600);background:transparent;color:var(--mist-400);
+  border-radius:9px;padding:6px 13px;font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.dims-back:hover{border-color:var(--gold);color:var(--gold-soft)}
+.dims-cards{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr))}
+.dims-ov{border:1px solid var(--ink-750);border-radius:13px;padding:13px 16px;background:rgba(14,21,32,.55);margin:0 0 14px}
+.dims-ov-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 9px}
+.dims-ov-h .t{font:400 16px/1.3 var(--serif);color:var(--mist-100)}
+.dims-ov-h .s{font-size:11px;color:var(--mist-700)}
+.dims-ov-grid{display:grid;gap:10px 26px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.dim-card{border:1px solid var(--ink-750);border-radius:13px;padding:14px 16px;background:rgba(14,21,32,.55);min-width:0;overflow:hidden}
+.dim-card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:0 0 9px}
+.dim-card-h .t{font:400 16px/1.3 var(--serif);color:var(--mist-100);margin:0}
+.dim-card-h .h{margin:3px 0 0;font-size:11px;line-height:1.5;color:var(--mist-700)}
+.dim-card-h .sc{text-align:right;flex:0 0 auto}
+.dim-card-h .sc .v{display:block;font:400 24px/1 var(--serif)}
+.dim-card-h .sc .w{display:block;margin-top:5px;font-size:10.5px;color:var(--mist-700)}
+.dim-warn{margin:0 0 8px;border:1px solid rgba(216,171,74,.2);background:rgba(216,171,74,.05);
+  border-radius:8px;padding:6px 9px;font-size:10.5px;line-height:1.5;color:var(--gold-soft)}
+.dim-tbl{width:100%;max-width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;font-size:12px}
+.dim-tbl th{text-align:left;font-weight:400;color:var(--mist-700);font-size:10.5px;padding:0 6px 6px;border-bottom:1px solid var(--ink-750)}
+.dim-tbl th.n,.dim-tbl td.n{text-align:right;white-space:nowrap}
+.dim-tbl td{padding:7px 6px;color:var(--mist-300);border-bottom:1px solid rgba(29,41,56,.5);vertical-align:middle}
+.dim-tbl tr:last-child td{border-bottom:0}
+.dim-tbl td.l{color:var(--mist-300)}
+.dim-tbl td.l .l{display:block;color:var(--mist-200);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dim-tbl td.l .s{display:block;margin-top:2px;font-size:10px;color:var(--mist-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dim-tbl td.n{font:12px/1.3 var(--serif);color:var(--mist-100)}
+.dim-tbl td.n.sc{color:var(--gold)}
+.dim-tbl td.b{width:54px;padding-left:8px}
+.dim-tbl td.b .track{display:block;height:5px;border-radius:99px;background:var(--ink-850);overflow:hidden}
+.dim-tbl td.b .fill{display:block;height:100%;border-radius:99px}
+.dim-row .dim-w{font-size:10.5px;color:var(--mist-700);min-width:30px;text-align:right}
+.dims-foot{margin:16px 0 0;font-size:11px;line-height:1.7;color:var(--mist-700)}
 </style>
 </head>
 <body>
@@ -347,6 +386,7 @@ tbody tr.open{background:rgba(14,21,32,.6)}
   <div id="failed"></div>
   <div id="results"></div>
   <div id="detail"></div>
+  <div id="dims-page" class="hidden"></div>
 
   <div class="card empty-card" id="empty">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/></svg>
@@ -552,7 +592,19 @@ function fmtUnit(v, unit) {
   return Math.abs(v) >= 100 ? v.toFixed(1) : v.toFixed(2);
 }
 
-function renderAll() { renderTable(); renderDetail(); syncRunButton(); }
+const DIM_ORDER = ['profit', 'cashflow', 'growth', 'solvency', 'operation', 'asset'];
+const DIM_HINTS = {
+  profit: 'ROE、净利率、毛利率、ROIC（ROIC 按 −8% 资金成本打分）',
+  cashflow: '现金含量、收现比、FCF 利润率、经营现金流为负年数',
+  growth: '营收/净利 CAGR 与最新同比、增长现金支撑、扣非占比、趋势一致性',
+  solvency: '流动比率（同业分位）、速动、现金比率、利息保障；银行看资本充足率',
+  operation: '周转率与周转天数，全部走同业分位——行业差异太大，绝对阈值会误判',
+  asset: '资产负债率、有息负债率、商誉占比；银行看不良率、拨备、资本充足率',
+};
+const BASIS_LABELS = { anchor: '阈值锚点', peer: '同业分位', table: '查表' };
+let dimsCode = null;
+
+function renderAll() { renderTable(); renderDetail(); syncRunButton(); renderView(); }
 
 function premium(row) {
   return (row.fair_high && row.price > 0) ? row.price / row.fair_high - 1 : null;
@@ -685,14 +737,8 @@ function renderDetail() {
 }
 
 function bindDetailEvents(row) {
-  const tb = $('#dim-toggle'), dd = $('#dim-detail');
-  if (tb && dd) {
-    tb.addEventListener('click', () => {
-      const open = !dd.hidden;
-      dd.hidden = open;
-      tb.lastChild.textContent = open ? ' 查看六维明细' : ' 收起六维明细';
-    });
-  }
+  const nav = $('#dim-nav');
+  if (nav) nav.addEventListener('click', () => openDims(row.code));
   const hp = $('#hist-periods');
   if (hp) {
     hp.addEventListener('click', e => {
@@ -978,34 +1024,122 @@ function trendCard(row) {
   </div>`;
 }
 
-function dimDetailHtml(row) {
-  const dd = row.dim_detail;
-  if (!dd) return '';
-  return Object.entries(DIM_LABELS).map(([k, label]) => {
+
+
+function scoreTone(s) {
+  if (s === null || s === undefined) return 'var(--ink-700)';
+  return s >= 80 ? 'var(--up)' : s >= 60 ? 'var(--gold)' : s >= 40 ? 'var(--mist-700)' : 'var(--down)';
+}
+
+function dimCard(key, blk) {
+  const items = blk.items || [];
+  if (!items.length) return '';
+  const missing = items.filter(it => it.score === null).length;
+  const rows = items.map(it => {
+    const s = (it.score === null || it.score === undefined) ? null : Math.max(0, Math.min(100, it.score));
+    const peerText = it.basis === 'peer'
+      ? ` · 样本 ${it.peer_n ?? 0}${it.peer_median === null || it.peer_median === undefined ? '' : ` · 中位 ${fmtUnit(it.peer_median, it.unit)}`}`
+      : '';
+    const basis = BASIS_LABELS[it.basis] || it.basis;
+    const title = `${it.label}｜${basis}${peerText}${it.note ? ` · ${it.note}` : ''}`;
+    const sub = `${basis}${it.basis === 'peer' && it.peer_n !== null ? ` · 样本 ${it.peer_n}` : ''}${it.note ? ` · ${it.note}` : ''}`;
+    return `<tr title="${esc(title)}">
+      <td class="l"><span class="l">${esc(it.label)}</span><span class="s">${esc(sub)}</span></td>
+      <td class="n">${fmtUnit(it.value, it.unit)}</td>
+      <td class="n sc">${s === null ? '—' : s.toFixed(1)}</td>
+      <td class="b"><span class="track"><span class="fill" style="width:${s ?? 0}%;background:${scoreTone(s)}"></span></span></td>
+    </tr>`;
+  }).join('');
+  const label = DIM_LABELS[key] ?? key;
+  const warn = missing > 0
+    ? `<p class="dim-warn">${missing === items.length
+        ? '该维度指标全部缺失（常见于金融等行业口径不适用），未计入总分'
+        : `${missing}/${items.length} 项缺数据，维度得分由其余项归一计算`}</p>` : '';
+  return `<div class="dim-card">
+    <div class="dim-card-h"><div>
+      <p class="t">${label}</p>
+      <p class="h">${esc(DIM_HINTS[key] || '')}</p>
+    </div><div class="sc">
+      <span class="v" style="color:${scoreTone(blk.score)}">${blk.score === null || blk.score === undefined ? '—' : Number(blk.score).toFixed(1)}</span>
+      <span class="w">占总分 ${Math.round((blk.weight || 0) * 100)}%</span>
+    </div></div>
+    ${warn}
+    <table class="dim-tbl">
+      <colgroup><col style="width:46%" /><col style="width:76px" /><col style="width:48px" /><col style="width:54px" /></colgroup>
+      <thead><tr><th>指标</th><th class="n">数值</th><th class="n">得分</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table>
+  </div>`;
+}
+
+function dimsPage(row) {
+  const dd = row.dim_detail || {};
+  const cards = DIM_ORDER.map(k => (dd[k] ? dimCard(k, dd[k]) : '')).join('');
+  const ov = DIM_ORDER.map(k => {
     const blk = dd[k];
     if (!blk) return '';
-    const items = blk.items || [];
-    if (!items.length) return '';
-    const rows = items.map(it => `
-      <tr>
-        <td>${esc(it.label)}</td>
-        <td class="n">${fmtUnit(it.value, it.unit)}</td>
-        <td class="n sc">${(it.score === null || it.score === undefined) ? '—' : it.score.toFixed(1)}</td>
-        <td class="n">${(it.weight * 100).toFixed(0)}%</td>
-        <td>${it.basis === 'peer' ? `同业分位${it.peer_n ? '（n=' + it.peer_n + '）' : ''}`
-          : it.basis === 'anchor' ? '绝对阈值' : '查表'}</td>
-      </tr>`).join('');
-    const miss = blk.missing || 0;
-    return `<div class="dim-block">
-      <div class="dim-block-h"><span class="t">${label}</span>
-        <span class="s">${(blk.score === null || blk.score === undefined) ? '—' : blk.score.toFixed(1)}</span></div>
-      <table class="dim-tbl"><thead><tr>
-        <th>指标</th><th>原始值</th><th>得分</th><th>权重</th><th>口径</th>
-      </tr></thead><tbody>${rows}</tbody></table>
-      ${miss ? `<p class="dim-note">${miss}/${items.length + miss} 项缺数据，维度得分由其余项归一计算</p>` : ''}
+    const w = (blk.score === null || blk.score === undefined) ? null
+      : Math.max(0, Math.min(100, blk.score));
+    return `<div class="dim-row">
+      <span class="dim-name">${DIM_LABELS[k] ?? k}</span>
+      <div class="dim-track"><div class="dim-fill" style="width:${w ?? 0}%;background:${scoreTone(w)}"></div></div>
+      <span class="dim-val">${w === null ? '—' : w.toFixed(1)}</span>
+      <span class="dim-w">${Math.round((blk.weight || 0) * 100)}%</span>
     </div>`;
   }).join('');
+  return `<div class="dims-head">
+    <div><h2 class="dims-title">${esc(row.name)}<span class="c">${esc(row.code)}</span></h2>
+      <p class="dims-sub">六维明细　·　总分 ${row.score_total === null || row.score_total === undefined ? '—' : Number(row.score_total).toFixed(1)}（${esc(row.grade ?? '—')}）　·　${esc(row.industry ?? '—')}</p></div>
+    <button type="button" class="dims-back" id="dims-back">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      返回详情</button>
+  </div>
+  <div class="dims-ov"><div class="dims-ov-h"><span class="t">六维总览</span>
+    <span class="s">条长为得分，右侧百分比为该维度占总分权重</span></div>
+    <div class="dims-ov-grid">${ov}</div></div>
+  <div class="dims-cards">${cards}</div>
+  <p class="dims-foot">六维评分为量化模型按同业分位与绝对阈值计算的结果，同业样本取自证监会行业分类，
+    不构成任何投资建议；指标口径与阈值见《企业评价与估值体系设计》§2.2。</p>`;
 }
+
+function renderView() {
+  const box = $('#dims-page');
+  if (!box) return;
+  const want = location.hash.replace('#', '') === 'dims';
+  const row = want && dimsCode ? rows.find(r => r.code === dimsCode) : null;
+  if (row) {
+    $('#results').classList.add('hidden');
+    $('#detail').classList.add('hidden');
+    box.classList.remove('hidden');
+    box.innerHTML = dimsPage(row);
+    const back = $('#dims-back');
+    if (back) back.addEventListener('click', closeDims);
+  } else {
+    $('#results').classList.remove('hidden');
+    $('#detail').classList.remove('hidden');
+    box.classList.add('hidden');
+    box.innerHTML = '';
+  }
+}
+
+function openDims(code) {
+  dimsCode = code;
+  if (location.hash.replace('#', '') !== 'dims') location.hash = 'dims';
+  else renderView();
+}
+
+function closeDims() {
+  if (history.length > 1) { history.back(); return; }
+  dimsCode = null;
+  location.hash = '';
+  renderView();
+}
+
+window.addEventListener('hashchange', () => {
+  if (location.hash.replace('#', '') !== 'dims') dimsCode = null;
+  renderView();
+});
 
 function dimsCard(row) {
   const has = row.score_total !== null && row.score_total !== undefined;
@@ -1026,15 +1160,11 @@ function dimsCard(row) {
     </div>`;
   }).join('');
 
-  const detail = dimDetailHtml(row);
-  const toggle = detail ? `<button type="button" class="dim-toggle" id="dim-toggle">
+  const toggle = row.dim_detail ? `<button type="button" class="dim-toggle" id="dim-nav">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-      <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-      <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-    </svg> 查看六维明细</button>
-    <div class="dim-detail" id="dim-detail" hidden>${detail}</div>` : '';
+      <polyline points="9 18 15 12 9 6"/></svg>
+    六维明细</button>` : '';
   return `<div class="card">${head}<div>${bars}</div>${!row.dims
     ? '<p style="margin:0;font-size:12.5px;color:var(--mist-700)">该样本未进入六维评价阶段</p>' : ''}${toggle}</div>`;
 }
